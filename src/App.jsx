@@ -140,11 +140,9 @@ function App() {
                             sx={{
                                 flexGrow: 1,
                                 p: 2,
-                                width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
-                                ml: { sm: `${DRAWER_WIDTH}px` },
                                 mt: '64px', // Header 高度
-                                backgroundColor: 'background.default',
-                                minHeight: 'calc(100vh - 64px)',
+                                overflowX: 'hidden',
+                                maxWidth: '100%', // 确保不溢出
                             }}
                         >
                             <Suspense fallback={<LoadingFallback />}>
