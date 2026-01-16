@@ -33,6 +33,8 @@ const CronGenerator = lazy(() => import('./tools/cron/CronGenerator'));
 const ImageBase64 = lazy(() => import('./tools/image/ImageBase64'));
 const ChmodCalculator = lazy(() => import('./tools/devops/ChmodCalculator'));
 const NumberBase = lazy(() => import('./tools/math/NumberBase'));
+const IpQuery = lazy(() => import('./tools/network/IpQuery'));
+const TextToolkit = lazy(() => import('./tools/text/TextToolkit'));
 
 /**
  * 主题上下文 - 用于全局主题切换
@@ -198,6 +200,12 @@ function App() {
 
                                     {/* 数学工具 */}
                                     <Route path="/tools/math/base" element={<NumberBase />} />
+
+                                    {/* 网络工具 */}
+                                    <Route path="/tools/network/ip" element={<IpQuery />} />
+
+                                    {/* 文本工具(P2) */}
+                                    <Route path="/tools/text/toolkit" element={<TextToolkit />} />
 
                                     {/* 404 页面 */}
                                     <Route path="/404" element={<NotFound />} />

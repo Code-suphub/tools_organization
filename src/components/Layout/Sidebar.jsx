@@ -34,6 +34,8 @@ import TimerIcon from '@mui/icons-material/Timer';
 import ImageIcon from '@mui/icons-material/Image';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import CalculateIcon from '@mui/icons-material/Calculate';
+import BuildIcon from '@mui/icons-material/Build';
+import PublicIcon from '@mui/icons-material/Public';
 
 import { categories, getToolsByCategory } from '../../config/tools';
 
@@ -60,6 +62,8 @@ const iconMap = {
     Image: ImageIcon,
     Terminal: TerminalIcon,
     Calculate: CalculateIcon,
+    Build: BuildIcon,
+    Public: PublicIcon,
 };
 
 /**

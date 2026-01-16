@@ -66,6 +66,12 @@ export const categories = [
         description: '进制转换、计算器等',
     },
     {
+        id: 'network',
+        name: '网络工具',
+        icon: 'Public',
+        description: 'IP 查询、UserAgent 等',
+    },
+    {
         id: 'format',
         name: '代码格式化',
         icon: 'FormatAlignLeft',
@@ -307,6 +313,32 @@ export const tools = [
         icon: 'Calculate',
         tags: ['math', 'base', 'binary', 'hex', '进制', '计算'],
         priority: 'P2',
+    },
+
+    // 网络工具
+    {
+        id: 'ip-query',
+        name: 'IP 查询',
+        description: '查询本机公网 IP 及 User-Agent 信息',
+        category: 'network',
+        path: '/tools/network/ip',
+        icon: 'Public',
+        tags: ['ip', 'network', 'address', 'useragent', '网络'],
+        priority: 'P2',
+        isNew: true,
+    },
+
+    // 文本工具箱 (补充 P2)
+    {
+        id: 'text-toolkit',
+        name: '文本工具箱',
+        description: '文本统计、大小写转换、去重、清理等',
+        category: 'text',
+        path: '/tools/text/toolkit',
+        icon: 'Build',
+        tags: ['text', 'toolkit', 'stats', 'case', 'duplicate', '文本', '工具箱'],
+        priority: 'P2',
+        isNew: true,
     },
 ];
 
