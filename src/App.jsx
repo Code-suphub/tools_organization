@@ -66,7 +66,7 @@ const LoadingFallback = () => (
 /**
  * 侧边栏宽度常量
  */
-const DRAWER_WIDTH = 280;
+const DRAWER_WIDTH = 260;
 
 /**
  * 主应用组件
@@ -139,7 +139,7 @@ function App() {
                             component="main"
                             sx={{
                                 flexGrow: 1,
-                                p: 3,
+                                p: 2,
                                 width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
                                 ml: { sm: `${DRAWER_WIDTH}px` },
                                 mt: '64px', // Header 高度
