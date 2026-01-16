@@ -127,7 +127,7 @@ function Sidebar({ mobileOpen, onDrawerToggle, drawerWidth }) {
 
     // 侧边栏内容
     const drawerContent = (
-        <Box sx={{ overflow: 'auto', height: '100%' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             {/* Logo 区域 */}
             <Box
                 sx={{
@@ -136,6 +136,7 @@ function Sidebar({ mobileOpen, onDrawerToggle, drawerWidth }) {
                     p: 2,
                     height: 64,
                     cursor: 'pointer',
+                    flexShrink: 0, // 防止 Logo 被压缩
                 }}
                 onClick={() => navigate('/')}
             >
@@ -169,127 +170,128 @@ function Sidebar({ mobileOpen, onDrawerToggle, drawerWidth }) {
 
             <Divider />
 
-            {/* 首页链接 */}
-            <List sx={{ px: 1, py: 1 }}>
-                <ListItem disablePadding>
-                    <ListItemButton
-                        selected={location.pathname === '/'}
-                        onClick={() => handleToolClick('/')}
-                        sx={{ borderRadius: 2 }}
-                    >
-                        <ListItemIcon sx={{ minWidth: 40 }}>
-                            <HomeIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText
-                            primary="首页"
-                            primaryTypographyProps={{
-                                fontSize: '0.9rem',
-                                fontWeight: location.pathname === '/' ? 600 : 400,
-                            }}
-                        />
-                    </ListItemButton>
-                </ListItem>
-            </List>
-
-            <Divider sx={{ my: 1 }} />
-
-            {/* 分类列表 */}
-            <List sx={{ px: 1 }}>
-                {categories.map((category) => {
-                    const categoryTools = getToolsByCategory(category.id);
-                    const isExpanded = expanded[category.id];
-                    const hasActiveChild = categoryTools.some(tool => tool.path === location.pathname);
-
-                    return (
-                        <Box key={category.id}>
-                            {/* 分类标题 */}
-                            <ListItemButton
-                                onClick={() => handleExpandClick(category.id)}
-                                sx={{
-                                    borderRadius: 2,
-                                    mb: 0.5,
-                                    backgroundColor: hasActiveChild
-                                        ? `${theme.palette.primary.main}08`
-                                        : 'transparent',
+            {/* 可滚动的内容区域 (包含首页链接和工具分类) */}
+            <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+                {/* 首页链接 */}
+                <List sx={{ px: 1, py: 1 }}>
+                    <ListItem disablePadding>
+                        <ListItemButton
+                            selected={location.pathname === '/'}
+                            onClick={() => handleToolClick('/')}
+                            sx={{ borderRadius: 2 }}
+                        >
+                            <ListItemIcon sx={{ minWidth: 40 }}>
+                                <HomeIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText
+                                primary="首页"
+                                primaryTypographyProps={{
+                                    fontSize: '0.9rem',
+                                    fontWeight: location.pathname === '/' ? 600 : 400,
                                 }}
-                            >
-                                <ListItemIcon sx={{ minWidth: 40, color: hasActiveChild ? theme.palette.primary.main : 'inherit' }}>
-                                    {getIcon(category.icon)}
-                                </ListItemIcon>
-                                <ListItemText
-                                    primary={category.name}
-                                    primaryTypographyProps={{
-                                        fontSize: '0.9rem',
-                                        fontWeight: hasActiveChild ? 600 : 500,
-                                        color: hasActiveChild ? theme.palette.primary.main : theme.palette.text.primary,
-                                    }}
-                                />
-                                {isExpanded ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
-                            </ListItemButton>
+                            />
+                        </ListItemButton>
+                    </ListItem>
+                </List>
 
-                            {/* 分类下的工具列表 */}
-                            <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                                <List component="div" disablePadding sx={{ pl: 2 }}>
-                                    {categoryTools.map((tool) => {
-                                        const isActive = location.pathname === tool.path;
-                                        return (
-                                            <ListItemButton
-                                                key={tool.id}
-                                                selected={isActive}
-                                                onClick={() => handleToolClick(tool.path)}
-                                                sx={{
-                                                    borderRadius: 2,
-                                                    mb: 0.5,
-                                                    py: 0.75,
-                                                }}
-                                            >
-                                                <ListItemText
-                                                    primary={
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                            <Typography
-                                                                variant="body2"
-                                                                sx={{
-                                                                    fontWeight: isActive ? 600 : 400,
-                                                                    color: isActive ? theme.palette.primary.main : theme.palette.text.primary,
-                                                                }}
-                                                            >
-                                                                {tool.name}
-                                                            </Typography>
-                                                            {tool.isNew && (
-                                                                <Chip
-                                                                    label="NEW"
-                                                                    size="small"
+                <Divider sx={{ my: 0, mx: 2 }} />
+
+                {/* 分类列表 */}
+                <List sx={{ px: 1 }}>
+                    {categories.map((category) => {
+                        const categoryTools = getToolsByCategory(category.id);
+                        const isExpanded = expanded[category.id];
+                        const hasActiveChild = categoryTools.some(tool => tool.path === location.pathname);
+
+                        return (
+                            <Box key={category.id}>
+                                {/* 分类标题 */}
+                                <ListItemButton
+                                    onClick={() => handleExpandClick(category.id)}
+                                    sx={{
+                                        borderRadius: 2,
+                                        mb: 0.5,
+                                        backgroundColor: hasActiveChild
+                                            ? `${theme.palette.primary.main}08`
+                                            : 'transparent',
+                                    }}
+                                >
+                                    <ListItemIcon sx={{ minWidth: 40, color: hasActiveChild ? theme.palette.primary.main : 'inherit' }}>
+                                        {getIcon(category.icon)}
+                                    </ListItemIcon>
+                                    <ListItemText
+                                        primary={category.name}
+                                        primaryTypographyProps={{
+                                            fontSize: '0.9rem',
+                                            fontWeight: hasActiveChild ? 600 : 500,
+                                            color: hasActiveChild ? theme.palette.primary.main : theme.palette.text.primary,
+                                        }}
+                                    />
+                                    {isExpanded ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+                                </ListItemButton>
+
+                                {/* 分类下的工具列表 */}
+                                <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                                    <List component="div" disablePadding sx={{ pl: 2 }}>
+                                        {categoryTools.map((tool) => {
+                                            const isActive = location.pathname === tool.path;
+                                            return (
+                                                <ListItemButton
+                                                    key={tool.id}
+                                                    selected={isActive}
+                                                    onClick={() => handleToolClick(tool.path)}
+                                                    sx={{
+                                                        borderRadius: 2,
+                                                        mb: 0.5,
+                                                        py: 0.75,
+                                                    }}
+                                                >
+                                                    <ListItemText
+                                                        primary={
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                <Typography
+                                                                    variant="body2"
                                                                     sx={{
-                                                                        height: 18,
-                                                                        fontSize: '0.65rem',
-                                                                        fontWeight: 600,
-                                                                        backgroundColor: theme.palette.primary.main,
-                                                                        color: '#fff',
+                                                                        fontWeight: isActive ? 600 : 400,
+                                                                        color: isActive ? theme.palette.primary.main : theme.palette.text.primary,
                                                                     }}
-                                                                />
-                                                            )}
-                                                        </Box>
-                                                    }
-                                                />
-                                            </ListItemButton>
-                                        );
-                                    })}
-                                </List>
-                            </Collapse>
-                        </Box>
-                    );
-                })}
-            </List>
+                                                                >
+                                                                    {tool.name}
+                                                                </Typography>
+                                                                {tool.isNew && (
+                                                                    <Chip
+                                                                        label="NEW"
+                                                                        size="small"
+                                                                        sx={{
+                                                                            height: 18,
+                                                                            fontSize: '0.65rem',
+                                                                            fontWeight: 600,
+                                                                            backgroundColor: theme.palette.primary.main,
+                                                                            color: '#fff',
+                                                                        }}
+                                                                    />
+                                                                )}
+                                                            </Box>
+                                                        }
+                                                    />
+                                                </ListItemButton>
+                                            );
+                                        })}
+                                    </List>
+                                </Collapse>
+                            </Box>
+                        );
+                    })}
+                </List>
+            </Box>
 
             {/* 底部版权信息 */}
             <Box
                 sx={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
                     p: 2,
                     borderTop: `1px solid ${theme.palette.divider}`,
+                    flexShrink: 0, // 防止被压缩
+                    backgroundColor: theme.palette.background.paper, // 确保背景不透明
                 }}
             >
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center' }}>
