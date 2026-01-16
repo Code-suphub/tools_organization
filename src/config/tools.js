@@ -51,7 +51,31 @@ export const categories = [
         id: 'format',
         name: '代码格式化',
         icon: 'FormatAlignLeft',
-        description: 'HTML、CSS、SQL 等格式化',
+        description: 'HTML、CSS、JS、XML 等格式化',
+    },
+    {
+        id: 'sql',
+        name: 'SQL 工具',
+        icon: 'Storage',
+        description: 'SQL 格式化与分析',
+    },
+    {
+        id: 'regex',
+        name: '正则工具',
+        icon: 'FindReplace',
+        description: '正则表达式测试与生成',
+    },
+    {
+        id: 'color',
+        name: '颜色工具',
+        icon: 'Palette',
+        description: '颜色选择与格式转换',
+    },
+    {
+        id: 'cron',
+        name: '定时任务',
+        icon: 'Timer',
+        description: 'Cron 表达式生成',
     },
 ];
 
@@ -162,6 +186,70 @@ export const tools = [
         icon: 'QrCode',
         tags: ['qrcode', 'qr', 'generate', '二维码', '生成'],
         priority: 'P0',
+    },
+
+    // === P1 阶段工具 ===
+
+    // 代码格式化工具
+    {
+        id: 'multi-format',
+        name: '代码格式化',
+        description: 'HTML、CSS、JavaScript、XML 代码格式化与压缩',
+        category: 'format',
+        path: '/tools/format/multi',
+        icon: 'FormatAlignLeft',
+        tags: ['html', 'css', 'javascript', 'xml', 'format', '格式化'],
+        isNew: true,
+        priority: 'P1',
+    },
+
+    // SQL 工具
+    {
+        id: 'sql-format',
+        name: 'SQL 格式化',
+        description: 'SQL 语句美化与压缩',
+        category: 'sql',
+        path: '/tools/sql/format',
+        icon: 'Storage',
+        tags: ['sql', 'format', 'database', '数据库', '格式化'],
+        priority: 'P1',
+    },
+
+    // 正则工具
+    {
+        id: 'regex-tester',
+        name: '正则表达式测试',
+        description: '实时测试正则表达式匹配，高亮显示结果',
+        category: 'regex',
+        path: '/tools/regex/tester',
+        icon: 'FindReplace',
+        tags: ['regex', 'regexp', 'pattern', '正则', '匹配'],
+        isNew: true,
+        priority: 'P1',
+    },
+
+    // 颜色工具
+    {
+        id: 'color-picker',
+        name: '颜色选择器',
+        description: 'HEX、RGB、HSL 颜色格式转换与选择',
+        category: 'color',
+        path: '/tools/color/picker',
+        icon: 'Palette',
+        tags: ['color', 'hex', 'rgb', 'hsl', '颜色', '调色板'],
+        priority: 'P1',
+    },
+
+    // Cron 工具
+    {
+        id: 'cron-generator',
+        name: 'Cron 表达式生成器',
+        description: '可视化生成和解析 Cron 定时任务表达式',
+        category: 'cron',
+        path: '/tools/cron/generator',
+        icon: 'Timer',
+        tags: ['cron', 'schedule', 'timer', '定时', '调度'],
+        priority: 'P1',
     },
 ];
 

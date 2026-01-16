@@ -22,6 +22,13 @@ const TextDiff = lazy(() => import('./tools/text/TextDiff'));
 const UuidGenerator = lazy(() => import('./tools/uuid/UuidGenerator'));
 const QRCodeGenerator = lazy(() => import('./tools/qrcode/QRCodeGenerator'));
 
+// P1 阶段工具 - 懒加载
+const MultiFormat = lazy(() => import('./tools/format/MultiFormat'));
+const SqlFormat = lazy(() => import('./tools/sql/SqlFormat'));
+const RegexTester = lazy(() => import('./tools/regex/RegexTester'));
+const ColorPicker = lazy(() => import('./tools/color/ColorPicker'));
+const CronGenerator = lazy(() => import('./tools/cron/CronGenerator'));
+
 /**
  * 主题上下文 - 用于全局主题切换
  */
@@ -160,6 +167,22 @@ function App() {
 
                                     {/* 二维码工具 */}
                                     <Route path="/tools/qrcode/generate" element={<QRCodeGenerator />} />
+
+                                    {/* P1 阶段工具 */}
+                                    {/* 代码格式化 */}
+                                    <Route path="/tools/format/multi" element={<MultiFormat />} />
+
+                                    {/* SQL 工具 */}
+                                    <Route path="/tools/sql/format" element={<SqlFormat />} />
+
+                                    {/* 正则工具 */}
+                                    <Route path="/tools/regex/tester" element={<RegexTester />} />
+
+                                    {/* 颜色工具 */}
+                                    <Route path="/tools/color/picker" element={<ColorPicker />} />
+
+                                    {/* Cron 工具 */}
+                                    <Route path="/tools/cron/generator" element={<CronGenerator />} />
 
                                     {/* 404 页面 */}
                                     <Route path="/404" element={<NotFound />} />

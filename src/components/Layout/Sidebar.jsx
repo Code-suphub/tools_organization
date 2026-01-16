@@ -26,6 +26,11 @@ import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import QrCodeIcon from '@mui/icons-material/QrCode';
 import CompareIcon from '@mui/icons-material/Compare';
 import LinkIcon from '@mui/icons-material/Link';
+import FormatAlignLeftIcon from '@mui/icons-material/FormatAlignLeft';
+import StorageIcon from '@mui/icons-material/Storage';
+import FindReplaceIcon from '@mui/icons-material/FindReplace';
+import PaletteIcon from '@mui/icons-material/Palette';
+import TimerIcon from '@mui/icons-material/Timer';
 
 import { categories, getToolsByCategory } from '../../config/tools';
 
@@ -44,6 +49,11 @@ const iconMap = {
     Compare: CompareIcon,
     Link: LinkIcon,
     Home: HomeIcon,
+    FormatAlignLeft: FormatAlignLeftIcon,
+    Storage: StorageIcon,
+    FindReplace: FindReplaceIcon,
+    Palette: PaletteIcon,
+    Timer: TimerIcon,
 };
 
 /**
