@@ -48,6 +48,24 @@ export const categories = [
         description: '二维码生成与解码',
     },
     {
+        id: 'image',
+        name: '图片工具',
+        icon: 'Image',
+        description: '图片处理与转换',
+    },
+    {
+        id: 'devops',
+        name: '运维工具',
+        icon: 'Terminal',
+        description: 'Linux、Docker 等运维辅助',
+    },
+    {
+        id: 'math',
+        name: '数学计算',
+        icon: 'Calculate',
+        description: '进制转换、计算器等',
+    },
+    {
         id: 'format',
         name: '代码格式化',
         icon: 'FormatAlignLeft',
@@ -250,6 +268,45 @@ export const tools = [
         icon: 'Timer',
         tags: ['cron', 'schedule', 'timer', '定时', '调度'],
         priority: 'P1',
+    },
+
+    // === P2 阶段工具 ===
+
+    // 图片工具
+    {
+        id: 'image-base64',
+        name: '图片 Base64',
+        description: '图片与 Base64 互转，支持预览',
+        category: 'image',
+        path: '/tools/image/base64',
+        icon: 'Image',
+        tags: ['image', 'base64', 'picture', '图片', '转换'],
+        priority: 'P2',
+        isNew: true,
+    },
+
+    // DevOps 工具
+    {
+        id: 'chmod-calculator',
+        name: 'Chmod 计算器',
+        description: 'Linux 文件权限 (rwx) 计算与转换',
+        category: 'devops',
+        path: '/tools/devops/chmod',
+        icon: 'Terminal',
+        tags: ['linux', 'chmod', 'permission', 'devops', '权限'],
+        priority: 'P2',
+    },
+
+    // 数学工具
+    {
+        id: 'number-base',
+        name: '进制转换',
+        description: '二进制、八进制、十进制、十六进制转换',
+        category: 'math',
+        path: '/tools/math/base',
+        icon: 'Calculate',
+        tags: ['math', 'base', 'binary', 'hex', '进制', '计算'],
+        priority: 'P2',
     },
 ];
 

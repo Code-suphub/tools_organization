@@ -29,6 +29,11 @@ const RegexTester = lazy(() => import('./tools/regex/RegexTester'));
 const ColorPicker = lazy(() => import('./tools/color/ColorPicker'));
 const CronGenerator = lazy(() => import('./tools/cron/CronGenerator'));
 
+// P2 阶段工具 - 懒加载
+const ImageBase64 = lazy(() => import('./tools/image/ImageBase64'));
+const ChmodCalculator = lazy(() => import('./tools/devops/ChmodCalculator'));
+const NumberBase = lazy(() => import('./tools/math/NumberBase'));
+
 /**
  * 主题上下文 - 用于全局主题切换
  */
@@ -183,6 +188,16 @@ function App() {
 
                                     {/* Cron 工具 */}
                                     <Route path="/tools/cron/generator" element={<CronGenerator />} />
+
+                                    {/* P2 阶段工具 */}
+                                    {/* 图片工具 */}
+                                    <Route path="/tools/image/base64" element={<ImageBase64 />} />
+
+                                    {/* DevOps 工具 */}
+                                    <Route path="/tools/devops/chmod" element={<ChmodCalculator />} />
+
+                                    {/* 数学工具 */}
+                                    <Route path="/tools/math/base" element={<NumberBase />} />
 
                                     {/* 404 页面 */}
                                     <Route path="/404" element={<NotFound />} />

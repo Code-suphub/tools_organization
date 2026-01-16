@@ -31,6 +31,9 @@ import StorageIcon from '@mui/icons-material/Storage';
 import FindReplaceIcon from '@mui/icons-material/FindReplace';
 import PaletteIcon from '@mui/icons-material/Palette';
 import TimerIcon from '@mui/icons-material/Timer';
+import ImageIcon from '@mui/icons-material/Image';
+import TerminalIcon from '@mui/icons-material/Terminal';
+import CalculateIcon from '@mui/icons-material/Calculate';
 
 import { categories, getToolsByCategory } from '../../config/tools';
 
@@ -54,6 +57,9 @@ const iconMap = {
     FindReplace: FindReplaceIcon,
     Palette: PaletteIcon,
     Timer: TimerIcon,
+    Image: ImageIcon,
+    Terminal: TerminalIcon,
+    Calculate: CalculateIcon,
 };
 
 /**
