@@ -1,0 +1,181 @@
+/* Tailwind CSS 导入 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================
+   全局样式 - 现代 SaaS 风格
+   ======================================== */
+
+/* 基础样式重置 */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #f5f5f7;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* 深色模式下的 body 背景 */
+body.dark-mode {
+    background-color: #27272a;
+}
+
+/* ========================================
+   自定义组件样式
+   ======================================== */
+
+/* 代码编辑器容器 */
+.code-editor-container {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e4e4e7;
+}
+
+.dark-mode .code-editor-container {
+    border-color: #52525b;
+}
+
+/* CodeMirror 自定义样式 */
+.cm-editor {
+    font-family: 'Fira Code', 'Consolas', monospace !important;
+    font-size: 14px !important;
+}
+
+.cm-editor .cm-gutters {
+    background-color: #fafafa !important;
+    border-right: 1px solid #e4e4e7 !important;
+}
+
+.dark-mode .cm-editor .cm-gutters {
+    background-color: #27272a !important;
+    border-right-color: #52525b !important;
+}
+
+.cm-editor .cm-activeLineGutter,
+.cm-editor .cm-activeLine {
+    background-color: rgba(0, 102, 255, 0.05) !important;
+}
+
+/* ========================================
+   工具卡片样式
+   ======================================== */
+
+.tool-card {
+    @apply bg-white rounded-card shadow-card transition-all duration-200 cursor-pointer;
+}
+
+.tool-card:hover {
+    @apply shadow-card-hover -translate-y-0.5;
+}
+
+.dark-mode .tool-card {
+    @apply bg-zinc-700 shadow-dark-card border border-zinc-600;
+}
+
+.dark-mode .tool-card:hover {
+    @apply shadow-dark-card-hover;
+}
+
+/* ========================================
+   按钮样式增强
+   ======================================== */
+
+/* CTA 按钮 - 品牌蓝色 */
+.btn-primary {
+    @apply bg-brand text-white font-medium px-5 py-2.5 rounded-button;
+    transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+    background-color: #0052CC;
+}
+
+/* Ghost 按钮 */
+.btn-ghost {
+    @apply bg-transparent text-zinc-500 font-medium px-4 py-2 rounded-button;
+    transition: all 0.2s ease;
+}
+
+.btn-ghost:hover {
+    @apply bg-zinc-100 text-zinc-700;
+}
+
+.dark-mode .btn-ghost {
+    @apply text-zinc-400;
+}
+
+.dark-mode .btn-ghost:hover {
+    @apply bg-zinc-700 text-zinc-200;
+}
+
+/* ========================================
+   布局工具类
+   ======================================== */
+
+/* 主内容区域最大宽度 */
+.content-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+/* 工具网格布局 */
+.tools-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6;
+}
+
+/* ========================================
+   动画效果
+   ======================================== */
+
+/* 淡入动画 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* 页面切换动画 */
+.page-transition {
+    animation: fadeIn 0.2s ease-out;
+}
+
+/* ========================================
+   响应式调整
+   ======================================== */
+
+/* 移动端侧边栏隐藏 */
+@media (max-width: 768px) {
+    .sidebar-hidden {
+        transform: translateX(-100%);
+    }
+}
+
+/* ========================================
+   打印样式
+   ======================================== */
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+}
