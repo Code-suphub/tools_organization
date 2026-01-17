@@ -380,6 +380,7 @@ function TimestampConverter() {
                             variant="outlined"
                             sx={{ mb: 2 }}
                             InputLabelProps={{ shrink: true }}
+                            helperText="可直接编辑或点击右侧图标选择日期时间"
                         />
                         <FormControl fullWidth>
                             <InputLabel>时区</InputLabel>
