@@ -1,8 +1,7 @@
-import React, { useState, useCallback } from 'react';
-import { Box, Grid, Paper, Typography, useTheme, Alert } from '@mui/material';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Box, Grid, Paper, Typography, useTheme, Alert, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import FormatAlignLeftIcon from '@mui/icons-material/FormatAlignLeft';
 import CompressIcon from '@mui/icons-material/Compress';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 
 import ToolCard from '../../components/ToolCard';
@@ -12,10 +11,9 @@ import CodeEditor from '../../components/CodeEditor';
  * JSON 格式化工具
  * 
  * 功能：
- * - JSON 美化（格式化）
- * - JSON 压缩（最小化）
- * - JSON 语法校验
- * - 实时错误提示
+ * - 实时 JSON 美化（格式化）
+ * - 实时 JSON 压缩（最小化）
+ * - 实时语法校验
  */
 function JsonFormat() {
     const theme = useTheme();
@@ -25,21 +23,25 @@ function JsonFormat() {
     const [output, setOutput] = useState('');
     const [error, setError] = useState(null);
     const [isValid, setIsValid] = useState(null);
+    const [mode, setMode] = useState('format'); // 'format' | 'minify'
 
     /**
-     * 格式化 JSON（美化）
+     * 实时处理 JSON
      */
-    const handleFormat = useCallback(() => {
+    useEffect(() => {
         if (!input.trim()) {
-            setError('请输入 JSON 内容');
-            setIsValid(false);
+            setOutput('');
+            setError(null);
+            setIsValid(null);
             return;
         }
 
         try {
             const parsed = JSON.parse(input);
-            const formatted = JSON.stringify(parsed, null, 2);
-            setOutput(formatted);
+            const result = mode === 'format'
+                ? JSON.stringify(parsed, null, 2)
+                : JSON.stringify(parsed);
+            setOutput(result);
             setError(null);
             setIsValid(true);
         } catch (err) {
@@ -47,50 +49,16 @@ function JsonFormat() {
             setIsValid(false);
             setOutput('');
         }
-    }, [input]);
+    }, [input, mode]);
 
     /**
-     * 压缩 JSON（最小化）
+     * 切换模式
      */
-    const handleMinify = useCallback(() => {
-        if (!input.trim()) {
-            setError('请输入 JSON 内容');
-            setIsValid(false);
-            return;
+    const handleModeChange = (_, newMode) => {
+        if (newMode !== null) {
+            setMode(newMode);
         }
-
-        try {
-            const parsed = JSON.parse(input);
-            const minified = JSON.stringify(parsed);
-            setOutput(minified);
-            setError(null);
-            setIsValid(true);
-        } catch (err) {
-            setError(`JSON 语法错误: ${err.message}`);
-            setIsValid(false);
-            setOutput('');
-        }
-    }, [input]);
-
-    /**
-     * 校验 JSON
-     */
-    const handleValidate = useCallback(() => {
-        if (!input.trim()) {
-            setError('请输入 JSON 内容');
-            setIsValid(false);
-            return;
-        }
-
-        try {
-            JSON.parse(input);
-            setError(null);
-            setIsValid(true);
-        } catch (err) {
-            setError(`JSON 语法错误: ${err.message}`);
-            setIsValid(false);
-        }
-    }, [input]);
+    };
 
     /**
      * 清空所有内容
@@ -105,21 +73,6 @@ function JsonFormat() {
     // 工具栏按钮配置
     const actions = [
         {
-            label: 'Format',
-            icon: <FormatAlignLeftIcon fontSize="small" />,
-            onClick: handleFormat,
-        },
-        {
-            label: 'Minify',
-            icon: <CompressIcon fontSize="small" />,
-            onClick: handleMinify,
-        },
-        {
-            label: 'Validate',
-            icon: <CheckCircleIcon fontSize="small" />,
-            onClick: handleValidate,
-        },
-        {
             label: 'Clear',
             icon: <DeleteOutlineIcon fontSize="small" />,
             onClick: handleClear,
@@ -129,10 +82,30 @@ function JsonFormat() {
     return (
         <ToolCard
             title="JSON 格式化"
-            description="美化、压缩和校验 JSON 数据，支持语法高亮和实时错误检测"
+            description="实时美化、压缩和校验 JSON 数据，支持语法高亮"
             actions={actions}
             copyContent={output}
         >
+            {/* 模式切换 */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                <ToggleButtonGroup
+                    value={mode}
+                    exclusive
+                    onChange={handleModeChange}
+                    aria-label="输出模式"
+                    size="small"
+                >
+                    <ToggleButton value="format" aria-label="格式化">
+                        <FormatAlignLeftIcon sx={{ mr: 1 }} fontSize="small" />
+                        格式化 (Format)
+                    </ToggleButton>
+                    <ToggleButton value="minify" aria-label="压缩">
+                        <CompressIcon sx={{ mr: 1 }} fontSize="small" />
+                        压缩 (Minify)
+                    </ToggleButton>
+                </ToggleButtonGroup>
+            </Box>
+
             {/* 错误/成功提示 */}
             {error && (
                 <Alert severity="error" sx={{ mb: 2 }}>
@@ -209,13 +182,13 @@ function JsonFormat() {
                             }}
                         >
                             <Typography variant="body2" fontWeight={500} color="text.secondary">
-                                输出结果
+                                输出结果 ({mode === 'format' ? '格式化' : '压缩'})
                             </Typography>
                         </Box>
                         <CodeEditor
                             value={output}
                             language="json"
-                            placeholder="格式化后的 JSON 将显示在这里..."
+                            placeholder="输入 JSON 后将实时显示结果..."
                             height="400px"
                             readOnly
                         />
@@ -227,3 +200,4 @@ function JsonFormat() {
 }
 
 export default JsonFormat;
+
