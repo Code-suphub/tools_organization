@@ -24,6 +24,7 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 
 import ToolCard from '../../components/ToolCard';
+import DateTimePickerInput from '../../components/DateTimePickerInput';
 
 // 扩展 dayjs 插件
 dayjs.extend(utc);
@@ -93,7 +94,7 @@ function TimestampConverter() {
 
     // 状态管理
     const [timestamp, setTimestamp] = useState('');
-    const [datetime, setDatetime] = useState('');
+    const [datetimeValue, setDatetimeValue] = useState(null); // dayjs 对象
     const [selectedTimezone, setSelectedTimezone] = useState('Asia/Shanghai');
     const [currentTime, setCurrentTime] = useState(dayjs());
     const [detectedPrecision, setDetectedPrecision] = useState(null);
@@ -206,21 +207,13 @@ function TimestampConverter() {
     /**
      * 日期时间转时间戳
      */
-    const handleDatetimeChange = (e) => {
-        const value = e.target.value;
-        setDatetime(value);
+    const handleDatetimeChange = (dayjsValue) => {
+        setDatetimeValue(dayjsValue);
 
-        if (value) {
-            try {
-                const date = dayjs.tz(value, selectedTimezone);
-                if (date.isValid()) {
-                    const ts = date.unix();
-                    setTimestamp(String(ts));
-                    updateFormats(String(ts));
-                }
-            } catch (err) {
-                // 忽略无效日期
-            }
+        if (dayjsValue && dayjsValue.isValid()) {
+            const ts = dayjsValue.unix();
+            setTimestamp(String(ts));
+            updateFormats(String(ts));
         } else {
             setTimestamp('');
             setFormats({});
@@ -236,7 +229,7 @@ function TimestampConverter() {
         const now = dayjs();
         const ts = now.unix();
         setTimestamp(String(ts));
-        setDatetime(now.tz(selectedTimezone).format('YYYY-MM-DDTHH:mm:ss'));
+        setDatetimeValue(now);
         updateFormats(String(ts));
     };
 
@@ -365,23 +358,18 @@ function TimestampConverter() {
                             backgroundColor: theme.palette.background.paper,
                             border: `1px solid ${theme.palette.divider}`,
                             borderRadius: 2,
-                            height: '100%',
                         }}
                     >
                         <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
                             日期时间输入
                         </Typography>
-                        <TextField
-                            fullWidth
-                            label="日期时间"
-                            type="datetime-local"
-                            value={datetime}
-                            onChange={handleDatetimeChange}
-                            variant="outlined"
-                            sx={{ mb: 2 }}
-                            InputLabelProps={{ shrink: true }}
-                            helperText="可直接编辑或点击右侧图标选择日期时间"
-                        />
+                        <Box sx={{ mb: 2 }}>
+                            <DateTimePickerInput
+                                value={datetimeValue}
+                                onChange={handleDatetimeChange}
+                                label="日期时间"
+                            />
+                        </Box>
                         <FormControl fullWidth>
                             <InputLabel>时区</InputLabel>
                             <Select

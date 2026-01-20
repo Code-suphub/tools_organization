@@ -10,6 +10,7 @@ import Sidebar from './components/Layout/Sidebar';
 // 页面组件 - 懒加载
 const Home = lazy(() => import('./pages/Home'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const DatePickerDemo = lazy(() => import('./pages/DatePickerDemo'));
 
 // 工具组件 - 懒加载
 const JsonFormat = lazy(() => import('./tools/json/JsonFormat'));
@@ -149,6 +150,9 @@ function App() {
                                 <Routes>
                                     {/* 首页 */}
                                     <Route path="/" element={<Home />} />
+
+                                    {/* 演示页面 */}
+                                    <Route path="/demo/datepicker" element={<DatePickerDemo />} />
 
                                     {/* JSON 工具 */}
                                     <Route path="/tools/json/format" element={<JsonFormat />} />
