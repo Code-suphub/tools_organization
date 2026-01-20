@@ -23,6 +23,7 @@ const HashGenerator = lazy(() => import('./tools/hash/HashGenerator'));
 const TextDiff = lazy(() => import('./tools/text/TextDiff'));
 const UuidGenerator = lazy(() => import('./tools/uuid/UuidGenerator'));
 const QRCodeGenerator = lazy(() => import('./tools/qrcode/QRCodeGenerator'));
+const QRCodeDecoder = lazy(() => import('./tools/qrcode/QRCodeDecoder'));
 
 // P1 阶段工具 - 懒加载
 const MultiFormat = lazy(() => import('./tools/format/MultiFormat'));
@@ -178,6 +179,7 @@ function App() {
 
                                     {/* 二维码工具 */}
                                     <Route path="/tools/qrcode/generate" element={<QRCodeGenerator />} />
+                                    <Route path="/tools/qrcode/decode" element={<QRCodeDecoder />} />
 
                                     {/* P1 阶段工具 */}
                                     {/* 代码格式化 */}

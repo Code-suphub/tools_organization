@@ -222,6 +222,17 @@ export const tools = [
         tags: ['qrcode', 'qr', 'generate', '二维码', '生成'],
         priority: 'P0',
     },
+    {
+        id: 'qrcode-decode',
+        name: '二维码解析',
+        description: '上传或粘贴图片解析二维码内容',
+        category: 'qrcode',
+        path: '/tools/qrcode/decode',
+        icon: 'QrCodeScanner',
+        tags: ['qrcode', 'qr', 'decode', 'scan', '二维码', '解析', '扫描'],
+        isNew: true,
+        priority: 'P0',
+    },
 
     // === P1 阶段工具 ===
 
