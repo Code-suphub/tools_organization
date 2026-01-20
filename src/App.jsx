@@ -18,6 +18,7 @@ const JsonDiff = lazy(() => import('./tools/json/JsonDiff'));
 const TimestampConverter = lazy(() => import('./tools/time/TimestampConverter'));
 const Base64Tool = lazy(() => import('./tools/encode/Base64'));
 const UrlEncode = lazy(() => import('./tools/encode/UrlEncode'));
+const JwtTool = lazy(() => import('./tools/encode/JwtTool'));
 const HashGenerator = lazy(() => import('./tools/hash/HashGenerator'));
 const TextDiff = lazy(() => import('./tools/text/TextDiff'));
 const UuidGenerator = lazy(() => import('./tools/uuid/UuidGenerator'));
@@ -164,6 +165,7 @@ function App() {
                                     {/* 编码工具 */}
                                     <Route path="/tools/encode/base64" element={<Base64Tool />} />
                                     <Route path="/tools/encode/url" element={<UrlEncode />} />
+                                    <Route path="/tools/encode/jwt" element={<JwtTool />} />
 
                                     {/* 哈希工具 */}
                                     <Route path="/tools/hash/generator" element={<HashGenerator />} />

@@ -162,6 +162,17 @@ export const tools = [
         tags: ['url', 'encode', 'decode', 'percent', '编码', '解码'],
         priority: 'P0',
     },
+    {
+        id: 'jwt',
+        name: 'JWT 加解密',
+        description: 'JWT Token 解析与生成，支持 HS256/HS384/HS512 算法',
+        category: 'encode',
+        path: '/tools/encode/jwt',
+        icon: 'Key',
+        tags: ['jwt', 'token', 'json', 'web', 'auth', '令牌', '认证', '加密', '解密'],
+        isNew: true,
+        priority: 'P0',
+    },
 
     // 哈希工具集
     {
