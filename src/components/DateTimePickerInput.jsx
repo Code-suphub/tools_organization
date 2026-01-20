@@ -116,7 +116,14 @@ function DateTimePickerInput({
      */
     const handleTogglePicker = () => {
         if (!expanded) {
-            setTempValue(value || dayjs());
+            // 打开选择器时，设置临时值
+            const initialValue = value || dayjs();
+            setTempValue(initialValue);
+            // 如果输入框为空，自动填充当前时间
+            if (!textValue.trim()) {
+                setTextValue(initialValue.format(format));
+                onChange?.(initialValue);
+            }
         }
         setExpanded(!expanded);
     };
