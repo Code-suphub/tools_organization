@@ -39,6 +39,7 @@ const CronGenerator = lazy(() => import('./tools/cron/CronGenerator'));
 
 // P2 阶段工具 - 懒加载
 const ImageBase64 = lazy(() => import('./tools/image/ImageBase64'));
+const ImageDiff = lazy(() => import('./tools/image/ImageDiff'));
 const ChmodCalculator = lazy(() => import('./tools/devops/ChmodCalculator'));
 const NumberBase = lazy(() => import('./tools/math/NumberBase'));
 const IpQuery = lazy(() => import('./tools/network/IpQuery'));
@@ -210,6 +211,7 @@ function App() {
                                     {/* P2 阶段工具 */}
                                     {/* 图片工具 */}
                                     <Route path="/tools/image/base64" element={<ImageBase64 />} />
+                                    <Route path="/tools/image/diff" element={<ImageDiff />} />
 
                                     {/* DevOps 工具 */}
                                     <Route path="/tools/devops/chmod" element={<ChmodCalculator />} />

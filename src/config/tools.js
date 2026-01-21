@@ -367,6 +367,17 @@ export const tools = [
         priority: 'P2',
         isNew: true,
     },
+    {
+        id: 'image-diff',
+        name: '图片对比',
+        description: '多种模式对比图片：并排、滑动、切换、叠加、像素差异',
+        category: 'image',
+        path: '/tools/image/diff',
+        icon: 'Compare',
+        tags: ['image', 'diff', 'compare', 'picture', '图片', '对比', '差异'],
+        priority: 'P2',
+        isNew: true,
+    },
 
     // DevOps 工具
     {
