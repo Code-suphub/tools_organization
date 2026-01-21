@@ -6,6 +6,7 @@ import { sql } from '@codemirror/lang-sql';
 import { xml } from '@codemirror/lang-xml';
 import { html } from '@codemirror/lang-html';
 import { css } from '@codemirror/lang-css';
+import { yaml } from '@codemirror/lang-yaml';
 import { Box, useTheme } from '@mui/material';
 
 /**
@@ -19,6 +20,7 @@ const languageExtensions = {
     xml: xml,
     html: html,
     css: css,
+    yaml: yaml,
 };
 
 /**

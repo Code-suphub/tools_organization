@@ -15,6 +15,9 @@ const DatePickerDemo = lazy(() => import('./pages/DatePickerDemo'));
 // 工具组件 - 懒加载
 const JsonFormat = lazy(() => import('./tools/json/JsonFormat'));
 const JsonDiff = lazy(() => import('./tools/json/JsonDiff'));
+const JsonYaml = lazy(() => import('./tools/json/JsonYaml'));
+const JsonXml = lazy(() => import('./tools/json/JsonXml'));
+const JsonUrl = lazy(() => import('./tools/json/JsonUrl'));
 const TimestampConverter = lazy(() => import('./tools/time/TimestampConverter'));
 const Base64Tool = lazy(() => import('./tools/encode/Base64'));
 const UrlEncode = lazy(() => import('./tools/encode/UrlEncode'));
@@ -29,6 +32,7 @@ const QRCodeDecoder = lazy(() => import('./tools/qrcode/QRCodeDecoder'));
 const MultiFormat = lazy(() => import('./tools/format/MultiFormat'));
 const SqlFormat = lazy(() => import('./tools/sql/SqlFormat'));
 const SqlToEntity = lazy(() => import('./tools/sql/SqlToEntity'));
+const SqlDiff = lazy(() => import('./tools/sql/SqlDiff'));
 const RegexTester = lazy(() => import('./tools/regex/RegexTester'));
 const ColorPicker = lazy(() => import('./tools/color/ColorPicker'));
 const CronGenerator = lazy(() => import('./tools/cron/CronGenerator'));
@@ -160,6 +164,9 @@ function App() {
                                     {/* JSON 工具 */}
                                     <Route path="/tools/json/format" element={<JsonFormat />} />
                                     <Route path="/tools/json/diff" element={<JsonDiff />} />
+                                    <Route path="/tools/json/yaml" element={<JsonYaml />} />
+                                    <Route path="/tools/json/xml" element={<JsonXml />} />
+                                    <Route path="/tools/json/url" element={<JsonUrl />} />
 
                                     {/* 时间工具 */}
                                     <Route path="/tools/time/timestamp" element={<TimestampConverter />} />
@@ -189,6 +196,7 @@ function App() {
                                     {/* SQL 工具 */}
                                     <Route path="/tools/sql/format" element={<SqlFormat />} />
                                     <Route path="/tools/sql/entity" element={<SqlToEntity />} />
+                                    <Route path="/tools/sql/diff" element={<SqlDiff />} />
 
                                     {/* 正则工具 */}
                                     <Route path="/tools/regex/tester" element={<RegexTester />} />

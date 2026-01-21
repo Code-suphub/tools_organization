@@ -36,6 +36,7 @@ import TerminalIcon from '@mui/icons-material/Terminal';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import BuildIcon from '@mui/icons-material/Build';
 import PublicIcon from '@mui/icons-material/Public';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 
 import { categories, getToolsByCategory } from '../../config/tools';
 
@@ -64,6 +65,7 @@ const iconMap = {
     Calculate: CalculateIcon,
     Build: BuildIcon,
     Public: PublicIcon,
+    SwapHoriz: SwapHorizIcon,
 };
 
 /**
