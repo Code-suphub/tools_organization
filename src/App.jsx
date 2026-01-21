@@ -28,6 +28,7 @@ const QRCodeDecoder = lazy(() => import('./tools/qrcode/QRCodeDecoder'));
 // P1 阶段工具 - 懒加载
 const MultiFormat = lazy(() => import('./tools/format/MultiFormat'));
 const SqlFormat = lazy(() => import('./tools/sql/SqlFormat'));
+const SqlToEntity = lazy(() => import('./tools/sql/SqlToEntity'));
 const RegexTester = lazy(() => import('./tools/regex/RegexTester'));
 const ColorPicker = lazy(() => import('./tools/color/ColorPicker'));
 const CronGenerator = lazy(() => import('./tools/cron/CronGenerator'));
@@ -187,6 +188,7 @@ function App() {
 
                                     {/* SQL 工具 */}
                                     <Route path="/tools/sql/format" element={<SqlFormat />} />
+                                    <Route path="/tools/sql/entity" element={<SqlToEntity />} />
 
                                     {/* 正则工具 */}
                                     <Route path="/tools/regex/tester" element={<RegexTester />} />

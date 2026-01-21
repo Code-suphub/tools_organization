@@ -260,6 +260,17 @@ export const tools = [
         tags: ['sql', 'format', 'database', '数据库', '格式化'],
         priority: 'P1',
     },
+    {
+        id: 'sql-to-entity',
+        name: 'SQL 转实体类',
+        description: 'CREATE TABLE 转 Go/Java/TypeScript/Python 实体类',
+        category: 'sql',
+        path: '/tools/sql/entity',
+        icon: 'TableChart',
+        tags: ['sql', 'entity', 'gorm', 'jpa', 'struct', '实体', '转换', 'go', 'java'],
+        isNew: true,
+        priority: 'P1',
+    },
 
     // 正则工具
     {
