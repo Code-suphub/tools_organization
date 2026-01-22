@@ -105,6 +105,18 @@ function TextDiff() {
         }
     };
 
+    /**
+     * 对输入框内容进行排序
+     */
+    const handleSortInput = useCallback(() => {
+        if (leftInput) {
+            setLeftInput(leftInput.split('\n').sort().join('\n'));
+        }
+        if (rightInput) {
+            setRightInput(rightInput.split('\n').sort().join('\n'));
+        }
+    }, [leftInput, rightInput]);
+
     // 工具栏按钮配置
     const actions = [
         {
@@ -112,6 +124,13 @@ function TextDiff() {
             icon: <SwapHorizIcon fontSize="small" />,
             onClick: handleSwap,
             disabled: !leftInput && !rightInput,
+        },
+        {
+            label: 'Sort Text',
+            icon: <SortByAlphaIcon fontSize="small" />,
+            onClick: handleSortInput,
+            disabled: !leftInput && !rightInput,
+            title: '对输入框文本进行排序'
         },
         {
             label: 'Clear',
