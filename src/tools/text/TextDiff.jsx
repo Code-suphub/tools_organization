@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Box, Grid, Paper, Typography, TextField, useTheme, Chip, ToggleButtonGroup, ToggleButton } from '@mui/material';
+import { Box, Grid, Paper, Typography, TextField, useTheme, Chip, ToggleButtonGroup, ToggleButton, Button, Tooltip } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
@@ -126,13 +126,6 @@ function TextDiff() {
             disabled: !leftInput && !rightInput,
         },
         {
-            label: 'Sort Text',
-            icon: <SortByAlphaIcon fontSize="small" />,
-            onClick: handleSortInput,
-            disabled: !leftInput && !rightInput,
-            title: '对输入框文本进行排序'
-        },
-        {
             label: 'Clear',
             icon: <DeleteOutlineIcon fontSize="small" />,
             onClick: handleClear,
@@ -228,16 +221,34 @@ function TextDiff() {
                     </ToggleButton>
                 </ToggleButtonGroup>
 
-                <ToggleButton
-                    value="sort"
-                    selected={sortLines}
-                    onChange={() => setSortLines(!sortLines)}
-                    color="primary"
-                    title="排序后对比（忽略行顺序）"
-                >
-                    <SortByAlphaIcon sx={{ mr: 1 }} fontSize="small" />
-                    排序
-                </ToggleButton>
+                <Box sx={{ display: 'flex', border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
+                    <ToggleButton
+                        value="sort"
+                        selected={sortLines}
+                        onChange={() => setSortLines(!sortLines)}
+                        color="primary"
+                        sx={{ border: 'none', borderRadius: '4px 0 0 4px' }}
+                        title="排序后对比（忽略行顺序）"
+                    >
+                        <SortByAlphaIcon sx={{ mr: 1 }} fontSize="small" />
+                        排序对比
+                    </ToggleButton>
+                    <Tooltip title="直接对输入框文本进行重排">
+                        <Button
+                            onClick={handleSortInput}
+                            disabled={!leftInput && !rightInput}
+                            sx={{
+                                borderLeft: `1px solid ${theme.palette.divider}`,
+                                borderRadius: '0 4px 4px 0',
+                                color: 'text.secondary',
+                                px: 2,
+                                minWidth: 'auto'
+                            }}
+                        >
+                            重排输入
+                        </Button>
+                    </Tooltip>
+                </Box>
             </Box>
 
             {/* 三栏布局：左边输入 | 中间结果 | 右边输入 */}
