@@ -5,6 +5,7 @@ import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
 import SpaceBarIcon from '@mui/icons-material/SpaceBar';
 import AbcIcon from '@mui/icons-material/Abc';
+import SortByAlphaIcon from '@mui/icons-material/SortByAlpha';
 import { diffLines, diffWords, diffChars } from 'diff';
 
 import ToolCard from '../../components/ToolCard';
@@ -26,6 +27,7 @@ function TextDiff() {
     const [leftInput, setLeftInput] = useState('');
     const [rightInput, setRightInput] = useState('');
     const [diffMode, setDiffMode] = useState('chars'); // lines | words | chars
+    const [sortLines, setSortLines] = useState(false);
 
     /**
      * 获取 diff 函数
@@ -48,7 +50,16 @@ function TextDiff() {
         }
 
         const diffFn = getDiffFn(diffMode);
-        const diff = diffFn(leftInput, rightInput);
+
+        let l = leftInput;
+        let r = rightInput;
+
+        if (sortLines) {
+            l = l.split('\n').sort().join('\n');
+            r = r.split('\n').sort().join('\n');
+        }
+
+        const diff = diffFn(l, r);
 
         // 统计变更
         let added = 0, removed = 0, unchanged = 0;
@@ -177,7 +188,7 @@ function TextDiff() {
             actions={actions}
         >
             {/* 对比模式切换 */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3, gap: 2 }}>
                 <ToggleButtonGroup
                     value={diffMode}
                     exclusive
@@ -197,6 +208,17 @@ function TextDiff() {
                         逐字符
                     </ToggleButton>
                 </ToggleButtonGroup>
+
+                <ToggleButton
+                    value="sort"
+                    selected={sortLines}
+                    onChange={() => setSortLines(!sortLines)}
+                    color="primary"
+                    title="排序后对比（忽略行顺序）"
+                >
+                    <SortByAlphaIcon sx={{ mr: 1 }} fontSize="small" />
+                    排序
+                </ToggleButton>
             </Box>
 
             {/* 三栏布局：左边输入 | 中间结果 | 右边输入 */}
