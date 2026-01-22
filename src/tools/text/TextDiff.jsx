@@ -109,14 +109,14 @@ function TextDiff() {
      * 对输入框内容进行排序
      */
     /**
-     * 对输入框内容进行排序并去除首尾空格
+     * 对输入框内容进行排序：去除首尾空格，并移除空行
      */
     const handleSortInput = useCallback(() => {
         if (leftInput) {
-            setLeftInput(leftInput.split('\n').map(l => l.trim()).sort().join('\n'));
+            setLeftInput(leftInput.split('\n').map(l => l.trim()).filter(l => l).sort().join('\n'));
         }
         if (rightInput) {
-            setRightInput(rightInput.split('\n').map(l => l.trim()).sort().join('\n'));
+            setRightInput(rightInput.split('\n').map(l => l.trim()).filter(l => l).sort().join('\n'));
         }
     }, [leftInput, rightInput]);
 
@@ -236,7 +236,7 @@ function TextDiff() {
                         <SortByAlphaIcon sx={{ mr: 1 }} fontSize="small" />
                         排序对比
                     </ToggleButton>
-                    <Tooltip title="去除空格并重排输入框文本">
+                    <Tooltip title="去除空格、空行并重排输入框文本">
                         <Button
                             onClick={handleSortInput}
                             disabled={!leftInput && !rightInput}
