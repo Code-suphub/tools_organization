@@ -78,7 +78,7 @@ function TextDiff() {
         });
 
         return { diffResult: diff, stats: { added, removed, unchanged } };
-    }, [leftInput, rightInput, diffMode]);
+    }, [leftInput, rightInput, diffMode, sortLines]);
 
     /**
      * 清空所有内容
