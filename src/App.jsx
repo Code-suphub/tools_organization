@@ -32,6 +32,7 @@ const QRCodeDecoder = lazy(() => import('./tools/qrcode/QRCodeDecoder'));
 const MultiFormat = lazy(() => import('./tools/format/MultiFormat'));
 const SqlFormat = lazy(() => import('./tools/sql/SqlFormat'));
 const SqlToEntity = lazy(() => import('./tools/sql/SqlToEntity'));
+const SqlDialectConvert = lazy(() => import('./tools/sql/SqlDialectConvert'));
 const SqlDiff = lazy(() => import('./tools/sql/SqlDiff'));
 const RegexTester = lazy(() => import('./tools/regex/RegexTester'));
 const ColorPicker = lazy(() => import('./tools/color/ColorPicker'));
@@ -198,6 +199,7 @@ function App() {
                                     {/* SQL 工具 */}
                                     <Route path="/tools/sql/format" element={<SqlFormat />} />
                                     <Route path="/tools/sql/entity" element={<SqlToEntity />} />
+                                    <Route path="/tools/sql/convert" element={<SqlDialectConvert />} />
                                     <Route path="/tools/sql/diff" element={<SqlDiff />} />
 
                                     {/* 正则工具 */}

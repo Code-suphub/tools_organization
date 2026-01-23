@@ -120,6 +120,44 @@ function TextToolkit() {
         }
     };
 
+    const toUrlEncode = () => transform(s => encodeURIComponent(s));
+    const decodeUrl = () => {
+        try {
+            transform(s => decodeURIComponent(s));
+        } catch (e) {
+            alert('URL 解码失败：包含无效的编码字符');
+        }
+    };
+
+    const prettifyUrlQuery = () => {
+        transform(s => {
+            try {
+                // 如果是完整 URL，只处理 search 部分
+                let queryString = s;
+                if (s.includes('?')) {
+                    queryString = s.split('?')[1];
+                }
+
+                // 处理编码情况，先解码再分割，以便查看
+                const params = new URLSearchParams(queryString);
+                const result = [];
+                for (const [key, value] of params.entries()) {
+                    result.push(`${key}=${value}`);
+                }
+                return result.join('\n');
+            } catch (e) {
+                // 如果不是标准格式，简单按 & 分割
+                return s.split('&').join('\n');
+            }
+        });
+    };
+
+    const unprettifyUrlQuery = () => {
+        transform(s => {
+            return s.split(/\r\n|\r|\n/).filter(line => line.trim()).join('&');
+        });
+    };
+
     const clear = () => setInput('');
 
     const copy = async () => {
@@ -298,7 +336,40 @@ function TextToolkit() {
                                         解 Unicode
                                     </Button>
                                 </Grid>
+                                <Grid item xs={6}>
+                                    <Button variant="outlined" size="small" fullWidth onClick={toUrlEncode}>
+                                        URL 编码
+                                    </Button>
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <Button variant="outlined" size="small" fullWidth onClick={decodeUrl}>
+                                        URL 解码
+                                    </Button>
+                                </Grid>
                             </Grid>
+                        </Paper>
+
+                        {/* URL 处理 */}
+                        <Paper
+                            elevation={0}
+                            sx={{
+                                p: 2,
+                                backgroundColor: theme.palette.background.paper,
+                                border: `1px solid ${theme.palette.divider}`,
+                                borderRadius: 2,
+                            }}
+                        >
+                            <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <CodeIcon fontSize="small" /> URL 参数处理
+                            </Typography>
+                            <Stack spacing={1}>
+                                <Button variant="outlined" size="small" fullWidth onClick={prettifyUrlQuery}>
+                                    参数解析 (Prettify)
+                                </Button>
+                                <Button variant="outlined" size="small" fullWidth onClick={unprettifyUrlQuery}>
+                                    参数合并 (Join)
+                                </Button>
+                            </Stack>
                         </Paper>
 
                         {/* 转换操作 */}

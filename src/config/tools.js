@@ -315,6 +315,17 @@ export const tools = [
         isNew: true,
         priority: 'P1',
     },
+    {
+        id: 'sql-dialect-convert',
+        name: 'SQL 方言转换',
+        description: 'PostgreSQL 和 MySQL 的 DDL 语句互转',
+        category: 'sql',
+        path: '/tools/sql/convert',
+        icon: 'SwapHoriz',
+        tags: ['sql', 'convert', 'postgresql', 'mysql', 'ddl', 'pg', '转换', '方言'],
+        isNew: true,
+        priority: 'P1',
+    },
 
     // 正则工具
     {

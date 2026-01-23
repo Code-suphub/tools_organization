@@ -22,38 +22,70 @@ import ToolCard from '../../components/ToolCard';
 import CodeEditor from '../../components/CodeEditor';
 
 /**
+ * SQL 方言选项
+ */
+const SQL_DIALECTS = [
+    { value: 'mysql', label: 'MySQL' },
+    { value: 'postgresql', label: 'PostgreSQL' },
+];
+
+/**
  * SQL 类型到各语言类型的映射
  */
 const TYPE_MAPPINGS = {
     go: {
-        // 整数类型
+        // 整数类型（MySQL + PostgreSQL 通用）
         'tinyint': 'int8',
         'smallint': 'int16',
+        'int2': 'int16',
         'mediumint': 'int32',
         'int': 'int32',
+        'int4': 'int32',
         'integer': 'int32',
         'bigint': 'int64',
+        'int8': 'int64',
         'tinyint unsigned': 'uint8',
         'smallint unsigned': 'uint16',
         'mediumint unsigned': 'uint32',
         'int unsigned': 'uint32',
         'integer unsigned': 'uint32',
         'bigint unsigned': 'uint64',
+        // PostgreSQL 自增类型
+        'serial': 'int32',
+        'serial4': 'int32',
+        'smallserial': 'int16',
+        'serial2': 'int16',
+        'bigserial': 'int64',
+        'serial8': 'int64',
         // 浮点类型
         'float': 'float32',
+        'float4': 'float32',
+        'real': 'float32',
         'double': 'float64',
+        'float8': 'float64',
+        'double precision': 'float64',
         'decimal': 'float64',
         'numeric': 'float64',
+        'money': 'float64',
         // 字符串类型
         'char': 'string',
+        'character': 'string',
         'varchar': 'string',
+        'character varying': 'string',
         'tinytext': 'string',
         'text': 'string',
         'mediumtext': 'string',
         'longtext': 'string',
         'json': 'string',
+        'jsonb': 'json.RawMessage',
         'enum': 'string',
         'set': 'string',
+        // PostgreSQL 特有类型
+        'uuid': 'string',
+        'citext': 'string',
+        'inet': 'string',
+        'cidr': 'string',
+        'macaddr': 'string',
         // 二进制类型
         'binary': '[]byte',
         'varbinary': '[]byte',
@@ -61,16 +93,26 @@ const TYPE_MAPPINGS = {
         'blob': '[]byte',
         'mediumblob': '[]byte',
         'longblob': '[]byte',
+        'bytea': '[]byte',
         // 时间类型
         'date': 'time.Time',
         'datetime': 'time.Time',
         'timestamp': 'time.Time',
+        'timestamp without time zone': 'time.Time',
+        'timestamp with time zone': 'time.Time',
+        'timestamptz': 'time.Time',
         'time': 'string',
+        'time without time zone': 'string',
+        'time with time zone': 'string',
+        'timetz': 'string',
+        'interval': 'string',
         'year': 'int',
         // 布尔
         'bool': 'bool',
         'boolean': 'bool',
         'bit': 'bool',
+        // PostgreSQL 数组（简化处理为字符串）
+        'array': '[]interface{}',
     },
     java: {
         // 整数类型
@@ -229,9 +271,210 @@ const TARGET_LANGUAGES = [
 ];
 
 /**
- * 解析 CREATE TABLE 语句
+ * 解析 PostgreSQL 的 COMMENT ON 语句
+ * @param {string} sql - 完整 SQL（包含 CREATE TABLE 和 COMMENT ON）
+ * @returns {Object} - { tableComment: string, columnComments: { columnName: comment } }
  */
-function parseCreateTable(sql) {
+function parsePostgresComments(sql) {
+    const result = {
+        tableComment: '',
+        columnComments: {},
+    };
+
+    // 解析表注释：COMMENT ON TABLE table_name IS 'comment';
+    const tableCommentMatch = sql.match(/COMMENT\s+ON\s+TABLE\s+[\w.]+\s+IS\s+'([^']+)'/i);
+    if (tableCommentMatch) {
+        result.tableComment = tableCommentMatch[1];
+    }
+
+    // 解析列注释：COMMENT ON COLUMN table_name.column_name IS 'comment';
+    const columnCommentRegex = /COMMENT\s+ON\s+COLUMN\s+[\w.]+\.(\w+)\s+IS\s+'([^']+)'/gi;
+    let match;
+    while ((match = columnCommentRegex.exec(sql)) !== null) {
+        result.columnComments[match[1]] = match[2];
+    }
+
+    return result;
+}
+
+/**
+ * 解析 PostgreSQL CREATE TABLE 语句
+ */
+function parsePostgreSQL(sql) {
+    const result = {
+        tableName: '',
+        columns: [],
+        primaryKeys: [],
+        uniqueKeys: [],
+        indexes: [],
+        tableComment: '',
+    };
+
+    // 先解析 COMMENT ON 语句（在移除注释之前，因为 COMMENT ON 不是 SQL 注释）
+    const comments = parsePostgresComments(sql);
+    result.tableComment = comments.tableComment;
+
+    // 移除 SQL 注释（行尾注释 -- xxx 和多行注释 /* xxx */）
+    // 注意：需要保留字符串中的 -- 和 /* */
+    let cleanSql = sql
+        // 移除多行注释
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        // 移除行尾注释（不在引号内的 -- 到行尾）
+        .replace(/--[^\n]*/g, '');
+
+    // 提取表名（PostgreSQL 可能有 schema.table 格式）
+    const tableMatch = cleanSql.match(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:[\w]+\.)?["']?(\w+)["']?\s*\(/i);
+    if (!tableMatch) {
+        throw new Error('无法解析表名，请确保输入的是有效的 CREATE TABLE 语句');
+    }
+    result.tableName = tableMatch[1];
+
+    // 提取括号内的内容
+    const contentMatch = cleanSql.match(/CREATE\s+TABLE[^(]+\(([\s\S]+?)\)(?:\s*;|\s*$|\s+WITH|\s+TABLESPACE)/i);
+    if (!contentMatch) {
+        throw new Error('无法解析表结构');
+    }
+
+    const content = contentMatch[1];
+
+    // 分割各个定义（考虑括号嵌套）
+    const definitions = [];
+    let current = '';
+    let depth = 0;
+    for (const char of content) {
+        if (char === '(') depth++;
+        if (char === ')') depth--;
+        if (char === ',' && depth === 0) {
+            definitions.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    if (current.trim()) {
+        definitions.push(current.trim());
+    }
+
+    // 解析每个定义
+    for (const def of definitions) {
+        if (!def) continue;
+
+        // PRIMARY KEY（内联或独立定义）
+        const pkMatch = def.match(/PRIMARY\s+KEY\s*\(([^)]+)\)/i);
+        if (pkMatch) {
+            const keys = pkMatch[1].split(',').map(k => k.trim().replace(/["`']/g, ''));
+            result.primaryKeys.push(...keys);
+            continue;
+        }
+
+        // UNIQUE
+        const ukMatch = def.match(/UNIQUE\s*\(([^)]+)\)/i);
+        if (ukMatch) {
+            const keys = ukMatch[1].split(',').map(k => k.trim().replace(/["`']/g, ''));
+            result.uniqueKeys.push(keys);
+            continue;
+        }
+
+        // CONSTRAINT（外键、CHECK 等）
+        if (/^CONSTRAINT/i.test(def)) {
+            continue;
+        }
+
+        // 解析列定义 - PostgreSQL 格式
+        // 需要正确分离：列名、类型（可能包含空格如 "double precision"）、长度、约束
+        // 先提取列名
+        const colNameMatch = def.match(/^["']?(\w+)["']?\s+(.+)$/i);
+        if (colNameMatch) {
+            const colName = colNameMatch[1];
+            let rest = colNameMatch[2].trim();
+
+            // 提取类型 - 类型是第一个单词或多个单词直到遇到括号或约束关键词
+            // 约束关键词：NOT, NULL, DEFAULT, PRIMARY, UNIQUE, REFERENCES, CHECK, CONSTRAINT
+            const constraintKeywords = /^(NOT|NULL|DEFAULT|PRIMARY|UNIQUE|REFERENCES|CHECK|CONSTRAINT)\b/i;
+
+            let rawType = '';
+            let length = null;
+            let constraints = '';
+
+            // 检查是否有括号（长度/精度定义）
+            const parenMatch = rest.match(/^([^(]+)\(([^)]+)\)(.*)$/);
+            if (parenMatch) {
+                rawType = parenMatch[1].trim().toLowerCase();
+                length = parenMatch[2];
+                constraints = parenMatch[3].trim();
+            } else {
+                // 没有括号，按空格分割，直到遇到约束关键词
+                const parts = rest.split(/\s+/);
+                const typeParts = [];
+                let foundConstraint = false;
+
+                for (let i = 0; i < parts.length; i++) {
+                    if (constraintKeywords.test(parts[i])) {
+                        constraints = parts.slice(i).join(' ');
+                        foundConstraint = true;
+                        break;
+                    }
+                    typeParts.push(parts[i]);
+                }
+
+                if (!foundConstraint) {
+                    // 整个 rest 都是类型名（不太可能，但处理一下）
+                    typeParts.push(...parts);
+                }
+
+                rawType = typeParts.join(' ').trim().toLowerCase();
+            }
+
+            // 规范化类型名
+            rawType = rawType
+                .replace(/\s+/g, ' ')
+                .replace('character varying', 'varchar')
+                .replace('character', 'char');
+
+            // 检查是否为 SERIAL 类型（隐含主键和自增）
+            const isSerial = ['serial', 'bigserial', 'smallserial', 'serial2', 'serial4', 'serial8'].includes(rawType);
+
+            const column = {
+                name: colName,
+                type: rawType,
+                length: length,
+                unsigned: false, // PostgreSQL 不支持 UNSIGNED
+                notNull: /NOT\s+NULL/i.test(constraints) || isSerial,
+                autoIncrement: isSerial,
+                defaultValue: null,
+                comment: comments.columnComments[colName] || '',
+            };
+
+            // 检查内联 PRIMARY KEY
+            if (/PRIMARY\s+KEY/i.test(constraints) || /PRIMARY\s+KEY/i.test(def)) {
+                result.primaryKeys.push(colName);
+            }
+
+            // 提取默认值
+            const defaultMatch = constraints.match(/DEFAULT\s+(?:'([^']*)'|([^\s,]+))/i);
+            if (defaultMatch) {
+                column.defaultValue = defaultMatch[1] || defaultMatch[2];
+            }
+
+            result.columns.push(column);
+        }
+    }
+
+    // 解析独立的 CREATE INDEX 语句
+    const indexRegex = /CREATE\s+(?:UNIQUE\s+)?INDEX\s+\w+\s+ON\s+\w+\s*\(([^)]+)\)/gi;
+    let indexMatch;
+    while ((indexMatch = indexRegex.exec(sql)) !== null) {
+        const keys = indexMatch[1].split(',').map(k => k.trim().replace(/["`']/g, ''));
+        result.indexes.push(keys);
+    }
+
+    return result;
+}
+
+/**
+ * 解析 MySQL CREATE TABLE 语句
+ */
+function parseMySQL(sql) {
     const result = {
         tableName: '',
         columns: [],
@@ -254,7 +497,7 @@ function parseCreateTable(sql) {
         result.tableComment = tableCommentMatch[1];
     }
 
-    // 提取括号内的内容
+    // 提取括号内的内容（MySQL 格式）
     const contentMatch = sql.match(/CREATE\s+TABLE[^(]+\(([\s\S]+)\)[^)]*$/i);
     if (!contentMatch) {
         throw new Error('无法解析表结构');
@@ -350,6 +593,16 @@ function parseCreateTable(sql) {
     }
 
     return result;
+}
+
+/**
+ * 统一解析入口，根据方言选择解析器
+ */
+function parseCreateTable(sql, dialect = 'mysql') {
+    if (dialect === 'postgresql') {
+        return parsePostgreSQL(sql);
+    }
+    return parseMySQL(sql);
 }
 
 /**
@@ -773,6 +1026,7 @@ function SqlToEntity() {
     // 状态管理
     const [input, setInput] = useState('');
     const [targetLang, setTargetLang] = useState('go-gorm');
+    const [sqlDialect, setSqlDialect] = useState('mysql');
 
     // 选项
     const [options, setOptions] = useState({
@@ -792,13 +1046,13 @@ function SqlToEntity() {
         }
 
         try {
-            const table = parseCreateTable(input);
+            const table = parseCreateTable(input, sqlDialect);
             const code = generateCode(table, targetLang, options);
             return { output: code, error: null, tableInfo: table };
         } catch (err) {
             return { output: '', error: err.message, tableInfo: null };
         }
-    }, [input, targetLang, options]);
+    }, [input, targetLang, options, sqlDialect]);
 
     /**
      * 清空
@@ -850,6 +1104,24 @@ function SqlToEntity() {
             actions={actions}
             copyContent={output}
         >
+            {/* SQL 方言选择 */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mb: 2 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ alignSelf: 'center', mr: 1 }}>
+                    SQL 方言：
+                </Typography>
+                {SQL_DIALECTS.map((dialect) => (
+                    <Chip
+                        key={dialect.value}
+                        label={dialect.label}
+                        onClick={() => setSqlDialect(dialect.value)}
+                        color={sqlDialect === dialect.value ? 'secondary' : 'default'}
+                        variant={sqlDialect === dialect.value ? 'filled' : 'outlined'}
+                        size="small"
+                        sx={{ cursor: 'pointer' }}
+                    />
+                ))}
+            </Box>
+
             {/* 目标语言选择 */}
             <Box sx={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 1, mb: 2 }}>
                 {TARGET_LANGUAGES.map((lang) => (
@@ -979,7 +1251,22 @@ function SqlToEntity() {
                             value={input}
                             onChange={setInput}
                             language="sql"
-                            placeholder={`输入 CREATE TABLE 语句，例如：
+                            placeholder={sqlDialect === 'postgresql'
+                                ? `输入 PostgreSQL CREATE TABLE 语句，例如：
+
+CREATE TABLE users (
+    id              BIGSERIAL PRIMARY KEY,
+    name            VARCHAR(100) NOT NULL DEFAULT '',
+    email           VARCHAR(255) DEFAULT NULL,
+    created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+    deleted_at      TIMESTAMP
+);
+
+-- 表注释和列注释使用 COMMENT ON 语句
+COMMENT ON TABLE users IS '用户表';
+COMMENT ON COLUMN users.name IS '用户名';
+COMMENT ON COLUMN users.email IS '邮箱';`
+                                : `输入 MySQL CREATE TABLE 语句，例如：
 
 CREATE TABLE \`users\` (
     \`id\` bigint unsigned NOT NULL AUTO_INCREMENT,
