@@ -13,8 +13,34 @@ import {
     Alert,
 } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 import ToolCard from '../../components/ToolCard';
+
+/**
+ * 常用正则表达式模板
+ */
+const COMMON_PATTERNS = [
+    { name: '邮箱', pattern: '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}', desc: '匹配电子邮箱地址' },
+    { name: '手机号', pattern: '1[3-9]\\d{9}', desc: '匹配中国大陥11位手机号' },
+    { name: '固话', pattern: '0\\d{2,3}-?\\d{7,8}', desc: '匹配固定电话号码' },
+    { name: 'URL', pattern: 'https?://[\\w\\-._~:/?#\\[\\]@!$&\'()*+,;=%]+', desc: '匹配 HTTP(S) 网址' },
+    { name: 'IPv4', pattern: '((25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)', desc: '匹配 IPv4 地址' },
+    { name: 'IPv6', pattern: '([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}', desc: '匹配标准 IPv6 地址' },
+    { name: '日期 (YYYY-MM-DD)', pattern: '\\d{4}[-/]\\d{1,2}[-/]\\d{1,2}', desc: '匹配年-月-日格式' },
+    { name: '时间 (HH:MM:SS)', pattern: '([01]?\\d|2[0-3]):[0-5]\\d(:[0-5]\\d)?', desc: '匹配时:分:秒格式' },
+    { name: '身份证', pattern: '\\d{17}[\\dXx]', desc: '匹配18位身份证号' },
+    { name: '邮政编码', pattern: '\\d{6}', desc: '匹配6位邮编' },
+    { name: '中文', pattern: '[\\u4e00-\\u9fa5]+', desc: '匹配中文字符' },
+    { name: '英文单词', pattern: '[a-zA-Z]+', desc: '匹配英文字母' },
+    { name: '数字', pattern: '\\d+', desc: '匹配整数' },
+    { name: '小数', pattern: '-?\\d+\\.\\d+', desc: '匹配小数数字' },
+    { name: '十六进制颜色', pattern: '#[0-9a-fA-F]{3,6}', desc: '匹配如 #FFF 或 #FFFFFF' },
+    { name: 'HTML标签', pattern: '<[^>]+>', desc: '匹配 HTML 标签' },
+    { name: '空白行', pattern: '^\\s*$', desc: '匹配空行或纯空白行' },
+    { name: 'UUID', pattern: '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', desc: '匹配 UUID 格式' },
+];
 
 /**
  * 正则表达式测试器
@@ -33,6 +59,7 @@ function RegexTester() {
     const [testString, setTestString] = useState('');
     const [flags, setFlags] = useState({ g: true, i: false, m: false, s: false });
     const [error, setError] = useState(null);
+    const [showPatterns, setShowPatterns] = useState(true);
 
     /**
      * 构建正则表达式标志字符串
@@ -108,6 +135,24 @@ function RegexTester() {
         setTestString('');
         setError(null);
     }, []);
+
+    /**
+     * 应用常用正则
+     */
+    const applyPattern = (p) => {
+        setPattern(p);
+    };
+
+    /**
+     * 复制正则表达式
+     */
+    const copyPattern = async (p) => {
+        try {
+            await navigator.clipboard.writeText(p);
+        } catch (err) {
+            console.error('复制失败:', err);
+        }
+    };
 
     /**
      * 渲染高亮文本
@@ -282,6 +327,59 @@ function RegexTester() {
                                 label={<Typography variant="body2">s (点号匹配换行)</Typography>}
                             />
                         </FormGroup>
+                    </Paper>
+                </Grid>
+
+                {/* 常用正则表达式 */}
+                <Grid item xs={12}>
+                    <Paper
+                        elevation={0}
+                        sx={{
+                            p: 2,
+                            backgroundColor: theme.palette.background.paper,
+                            border: `1px solid ${theme.palette.divider}`,
+                            borderRadius: 2,
+                        }}
+                    >
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                mb: showPatterns ? 2 : 0,
+                                cursor: 'pointer',
+                            }}
+                            onClick={() => setShowPatterns(!showPatterns)}
+                        >
+                            <Typography variant="subtitle1" fontWeight={600} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <LightbulbIcon fontSize="small" color="warning" />
+                                常用正则表达式
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                点击{showPatterns ? '收起' : '展开'}
+                            </Typography>
+                        </Box>
+                        {showPatterns && (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                {COMMON_PATTERNS.map((item, idx) => (
+                                    <Chip
+                                        key={idx}
+                                        label={item.name}
+                                        onClick={() => applyPattern(item.pattern)}
+                                        onDelete={() => copyPattern(item.pattern)}
+                                        deleteIcon={<ContentCopyIcon fontSize="small" />}
+                                        variant="outlined"
+                                        size="small"
+                                        title={`${item.desc}\n${item.pattern}`}
+                                        sx={{
+                                            '&:hover': {
+                                                backgroundColor: theme.palette.action.hover,
+                                            },
+                                        }}
+                                    />
+                                ))}
+                            </Box>
+                        )}
                     </Paper>
                 </Grid>
 
