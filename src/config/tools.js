@@ -420,7 +420,7 @@ export const tools = [
     {
         id: 'text-toolkit',
         name: '文本工具箱',
-        description: '文本统计、大小写转换、清理等',
+        description: '文本统计、编码转换/查看、大小写转换、清理等',
         category: 'text',
         path: '/tools/text/toolkit',
         icon: 'Build',

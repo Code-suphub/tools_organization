@@ -13,7 +13,11 @@ import {
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import FormatSizeIcon from '@mui/icons-material/FormatSize';
+
 import CleaningServicesIcon from '@mui/icons-material/CleaningServices';
+import CodeIcon from '@mui/icons-material/Code';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 
 import ToolCard from '../../components/ToolCard';
 
@@ -33,11 +37,15 @@ function TextToolkit() {
      * 统计信息
      */
     const stats = useMemo(() => {
+        const str = input || '';
         return {
-            chars: input.length,
-            lines: input ? input.split(/\r\n|\r|\n/).length : 0,
-            words: input ? input.trim().split(/\s+/).length : 0,
-            bytes: new Blob([input]).size,
+            chars: str.length,
+            lines: str ? str.split(/\r\n|\r|\n/).length : 0,
+            words: str ? str.trim().split(/\s+/).length : 0,
+            bytesUtf8: new Blob([str]).size,
+            // GBK Approximation: ASCII=1, Others=2
+            bytesGbk: str.replace(/[^\x00-\xff]/g, "**").length,
+            bytesUtf16: str.length * 2,
         };
     }, [input]);
 
@@ -67,6 +75,50 @@ function TextToolkit() {
     const trimLines = () => transform(s => {
         return s.split(/\r\n|\r|\n/).map(line => line.trim()).join('\n');
     });
+
+    const toBase64 = () => {
+        try {
+            // Support UTF-8 strings
+            transform(s => window.btoa(unescape(encodeURIComponent(s))));
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const toHex = () => {
+        transform(s => {
+            let hex = '';
+            for (let i = 0; i < s.length; i++) {
+                hex += s.charCodeAt(i).toString(16).padStart(4, '0');
+            }
+            return hex;
+        });
+    };
+
+    const toUnicode = () => {
+        transform(s => {
+            return s.split('').map(c => {
+                const code = c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0');
+                return `\\u${code}`;
+            }).join('');
+        });
+    };
+
+    const decodeBase64 = () => {
+        try {
+            transform(s => decodeURIComponent(escape(window.atob(s))));
+        } catch (e) {
+            alert('无效的 Base64 字符串');
+        }
+    };
+
+    const decodeUnicode = () => {
+        try {
+            transform(s => JSON.parse(`"${s}"`));
+        } catch (e) {
+            alert('无效的 Unicode 转义序列');
+        }
+    };
 
     const clear = () => setInput('');
 
@@ -130,18 +182,8 @@ function TextToolkit() {
                             <Typography variant="body2" fontWeight={500} color="text.secondary">
                                 文本内容
                             </Typography>
-                            <Stack direction="row" spacing={2}>
-                                <Typography variant="caption" color="text.secondary">
-                                    {stats.chars} 字符
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                    {stats.words} 单词
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                    {stats.lines} 行
-                                </Typography>
-                            </Stack>
                         </Box>
+                        {/* 扩展统计信息展示 - 移除了顶部的简略统计，改为右侧详细展示 */}
                         <TextField
                             fullWidth
                             multiline
@@ -165,9 +207,100 @@ function TextToolkit() {
                     </Paper>
                 </Grid>
 
-                {/* 操作区域 */}
+                {/* 右侧统计和工具区域 */}
                 <Grid item xs={12} md={4}>
                     <Stack spacing={3}>
+                        {/* 详细统计 */}
+                        <Paper
+                            elevation={0}
+                            sx={{
+                                overflow: 'hidden',
+                                backgroundColor: theme.palette.background.paper,
+                                border: `1px solid ${theme.palette.divider}`,
+                                borderRadius: 2,
+                            }}
+                        >
+                            <Box sx={{ p: 1.5, borderBottom: `1px solid ${theme.palette.divider}`, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <AnalyticsIcon fontSize="small" color="primary" />
+                                <Typography variant="subtitle2" fontWeight={600}>
+                                    文本统计
+                                </Typography>
+                            </Box>
+                            <TableContainer>
+                                <Table size="small">
+                                    <TableBody>
+                                        <TableRow>
+                                            <TableCell sx={{ color: 'text.secondary', border: 0 }}>字符数</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 600, border: 0 }}>{stats.chars}</TableCell>
+                                        </TableRow>
+                                        <TableRow>
+                                            <TableCell sx={{ color: 'text.secondary', border: 0 }}>行数</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 600, border: 0 }}>{stats.lines}</TableCell>
+                                        </TableRow>
+                                        <TableRow>
+                                            <TableCell sx={{ color: 'text.secondary', border: 0, pb: 2 }}>单词数</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 600, border: 0, pb: 2 }}>{stats.words}</TableCell>
+                                        </TableRow>
+                                        {/* 分割线 */}
+                                        <TableRow>
+                                            <TableCell colSpan={2} sx={{ p: 0, border: 0 }}>
+                                                <Divider />
+                                            </TableCell>
+                                        </TableRow>
+                                        <TableRow>
+                                            <TableCell sx={{ color: 'text.secondary', border: 0, pt: 2 }}>UTF-8</TableCell>
+                                            <TableCell align="right" sx={{ fontFamily: 'monospace', border: 0, pt: 2 }}>{stats.bytesUtf8} B</TableCell>
+                                        </TableRow>
+                                        <TableRow>
+                                            <TableCell sx={{ color: 'text.secondary', border: 0 }}>GBK (Est.)</TableCell>
+                                            <TableCell align="right" sx={{ fontFamily: 'monospace', border: 0 }}>{stats.bytesGbk} B</TableCell>
+                                        </TableRow>
+                                        <TableRow>
+                                            <TableCell sx={{ color: 'text.secondary', border: 0 }}>UTF-16</TableCell>
+                                            <TableCell align="right" sx={{ fontFamily: 'monospace', border: 0 }}>{stats.bytesUtf16} B</TableCell>
+                                        </TableRow>
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        </Paper>
+
+                        {/* 编码转换 */}
+                        <Paper
+                            elevation={0}
+                            sx={{
+                                p: 2,
+                                backgroundColor: theme.palette.background.paper,
+                                border: `1px solid ${theme.palette.divider}`,
+                                borderRadius: 2,
+                            }}
+                        >
+                            <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <CodeIcon fontSize="small" /> 编码转换
+                            </Typography>
+                            <Grid container spacing={1}>
+                                <Grid item xs={6}>
+                                    <Button variant="outlined" size="small" fullWidth onClick={toBase64}>
+                                        转 Base64
+                                    </Button>
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <Button variant="outlined" size="small" fullWidth onClick={decodeBase64}>
+                                        解 Base64
+                                    </Button>
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <Button variant="outlined" size="small" fullWidth onClick={toUnicode}>
+                                        转 Unicode
+                                    </Button>
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <Button variant="outlined" size="small" fullWidth onClick={decodeUnicode}>
+                                        解 Unicode
+                                    </Button>
+                                </Grid>
+                            </Grid>
+                        </Paper>
+
                         {/* 转换操作 */}
                         <Paper
                             elevation={0}
@@ -221,8 +354,8 @@ function TextToolkit() {
                         </Paper>
                     </Stack>
                 </Grid>
-            </Grid>
-        </ToolCard>
+            </Grid >
+        </ToolCard >
     );
 }
 
