@@ -1,12 +1,14 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { Box, Grid, Paper, Typography, TextField, useTheme, Chip, ToggleButtonGroup, ToggleButton, Button, Tooltip } from '@mui/material';
+import React, { useState, useCallback, useRef } from 'react';
+import { Box, Grid, Paper, Typography, useTheme, Chip, ToggleButtonGroup, ToggleButton, Button, Tooltip, CircularProgress, Fade, TextField, IconButton } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
 import SpaceBarIcon from '@mui/icons-material/SpaceBar';
 import AbcIcon from '@mui/icons-material/Abc';
-import SortByAlphaIcon from '@mui/icons-material/SortByAlpha';
-import { diffLines, diffWords, diffChars } from 'diff';
+import { List } from 'react-window';
+import { useDiff } from '../../hooks/useDiff';
 
 import ToolCard from '../../components/ToolCard';
 
@@ -26,59 +28,32 @@ function TextDiff() {
     // 状态管理
     const [leftInput, setLeftInput] = useState('');
     const [rightInput, setRightInput] = useState('');
-    const [diffMode, setDiffMode] = useState('chars'); // lines | words | chars
-    const [sortLines, setSortLines] = useState(false);
+    const [diffMode, setDiffMode] = useState('lines'); // lines | words | chars
+    const [currentDiffIndex, setCurrentDiffIndex] = useState(-1);
+    const listRef = useRef(null);
+
+    // 使用高性能 Hook 替代本地同步计算
+    const { result: diffResult, diffIndices, loading, duration, stats } = useDiff(leftInput, rightInput, diffMode);
 
     /**
-     * 获取 diff 函数
+     * 跳转到下一个差异点
      */
-    const getDiffFn = (mode) => {
-        switch (mode) {
-            case 'words': return diffWords;
-            case 'chars': return diffChars;
-            default: return diffLines;
-        }
-    };
+    const handleNextDiff = useCallback(() => {
+        if (!diffIndices || diffIndices.length === 0) return;
+        const nextIdx = (currentDiffIndex + 1) % diffIndices.length;
+        setCurrentDiffIndex(nextIdx);
+        listRef.current?.scrollToItem(diffIndices[nextIdx], 'center');
+    }, [diffIndices, currentDiffIndex]);
 
     /**
-     * 实时计算对比结果（使用 useMemo 优化性能）
+     * 跳转到上一个差异点
      */
-    const { diffResult, stats } = useMemo(() => {
-        // 如果两边都为空，则不显示结果
-        if (!leftInput && !rightInput) {
-            return { diffResult: null, stats: { added: 0, removed: 0, unchanged: 0 } };
-        }
-
-        const diffFn = getDiffFn(diffMode);
-
-        let l = leftInput;
-        let r = rightInput;
-
-        if (sortLines) {
-            l = l.split('\n').sort().join('\n');
-            r = r.split('\n').sort().join('\n');
-        }
-
-        const diff = diffFn(l, r);
-
-        // 统计变更
-        let added = 0, removed = 0, unchanged = 0;
-        diff.forEach(part => {
-            const count = diffMode === 'lines'
-                ? part.value.split('\n').filter(l => l).length
-                : part.value.length;
-
-            if (part.added) {
-                added += count;
-            } else if (part.removed) {
-                removed += count;
-            } else {
-                unchanged += count;
-            }
-        });
-
-        return { diffResult: diff, stats: { added, removed, unchanged } };
-    }, [leftInput, rightInput, diffMode, sortLines]);
+    const handlePrevDiff = useCallback(() => {
+        if (!diffIndices || diffIndices.length === 0) return;
+        const prevIdx = (currentDiffIndex - 1 + diffIndices.length) % diffIndices.length;
+        setCurrentDiffIndex(prevIdx);
+        listRef.current?.scrollToItem(diffIndices[prevIdx], 'center');
+    }, [diffIndices, currentDiffIndex]);
 
     /**
      * 清空所有内容
@@ -136,56 +111,101 @@ function TextDiff() {
     ];
 
     /**
-     * 渲染 Diff 结果 - 实时更新
+     * 虚拟滚动行组件
+     */
+    /**
+     * 虚拟滚动行组件
+     */
+    const Row = useCallback(({ index, style, diffResult, diffIndices, currentDiffIndex, theme, diffMode }) => {
+        const part = diffResult ? diffResult[index] : null;
+        if (!part) return null;
+
+        let backgroundColor = 'transparent';
+        let color = theme.palette.text.primary;
+        let textDecoration = 'none';
+
+        if (part.type === 'added') {
+            backgroundColor = theme.palette.mode === 'dark'
+                ? 'rgba(34, 197, 94, 0.25)'
+                : 'rgba(34, 197, 94, 0.15)';
+            color = theme.palette.mode === 'dark' ? '#86efac' : '#15803d';
+        } else if (part.type === 'removed') {
+            backgroundColor = theme.palette.mode === 'dark'
+                ? 'rgba(239, 68, 68, 0.25)'
+                : 'rgba(239, 68, 68, 0.15)';
+            color = theme.palette.mode === 'dark' ? '#fca5a5' : '#dc2626';
+            textDecoration = 'line-through';
+        }
+
+        const isCurrent = diffIndices && diffIndices[currentDiffIndex] === index;
+
+        return (
+            <Box
+                style={style}
+                sx={{
+                    display: diffMode === 'lines' ? 'block' : 'inline',
+                    backgroundColor,
+                    color,
+                    textDecoration,
+                    px: 1,
+                    py: 0.5,
+                    borderRadius: diffMode === 'lines' ? 0 : '2px',
+                    fontFamily: "'Fira Code', monospace",
+                    fontSize: '13px',
+                    lineHeight: 1.6,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-all',
+                    borderBottom: diffMode === 'lines' ? `1px solid ${theme.palette.divider}` : 'none',
+                    opacity: 0.9,
+                    borderLeft: isCurrent ? `4px solid ${theme.palette.primary.main}` : 'none',
+                    overflow: 'hidden',
+                }}
+            >
+                {part.content}
+            </Box>
+        );
+    }, []);
+
+    /**
+     * 渲染 Diff 结果 - 异步加载 + 虚拟滚动
      */
     const renderDiffResult = () => {
         if (!diffResult) return null;
 
         return (
-            <Box
-                sx={{
-                    fontFamily: "'Fira Code', monospace",
-                    fontSize: '13px',
-                    lineHeight: diffMode === 'lines' ? 1.6 : 1.8,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                }}
-            >
-                {diffResult.map((part, index) => {
-                    let backgroundColor = 'transparent';
-                    let color = theme.palette.text.primary;
-                    let textDecoration = 'none';
+            <Box sx={{ height: 600, width: '100%', position: 'relative' }}>
+                <List
+                    listRef={listRef}
+                    height={600}
+                    rowCount={diffResult ? diffResult.length : 0}
+                    rowHeight={diffMode === 'lines' ? 30 : 25}
+                    rowComponent={Row}
+                    rowProps={{ diffResult, diffIndices, currentDiffIndex, theme, diffMode }}
+                    width="100%"
+                />
 
-                    if (part.added) {
-                        backgroundColor = theme.palette.mode === 'dark'
-                            ? 'rgba(34, 197, 94, 0.25)'
-                            : 'rgba(34, 197, 94, 0.2)';
-                        color = theme.palette.mode === 'dark' ? '#86efac' : '#15803d';
-                    } else if (part.removed) {
-                        backgroundColor = theme.palette.mode === 'dark'
-                            ? 'rgba(239, 68, 68, 0.25)'
-                            : 'rgba(239, 68, 68, 0.2)';
-                        color = theme.palette.mode === 'dark' ? '#fca5a5' : '#dc2626';
-                        textDecoration = 'line-through';
-                    }
-
-                    return (
-                        <Box
-                            key={index}
-                            component="span"
-                            sx={{
-                                display: diffMode === 'lines' ? 'block' : 'inline',
-                                backgroundColor,
-                                color,
-                                textDecoration,
-                                px: diffMode === 'lines' ? 1 : 0,
-                                borderRadius: diffMode === 'lines' ? 0 : '2px',
-                            }}
-                        >
-                            {part.value}
-                        </Box>
-                    );
-                })}
+                {/* 计算中的加载遮罩 */}
+                <Fade in={loading}>
+                    <Box
+                        sx={{
+                            position: 'absolute',
+                            top: 0, left: 0, right: 0, bottom: 0,
+                            backgroundColor: 'rgba(255,255,255,0.7)',
+                            backdropFilter: 'blur(2px)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 10,
+                            borderRadius: 1,
+                        }}
+                    >
+                        <CircularProgress size={40} sx={{ mb: 2 }} />
+                        <Typography variant="body2" color="text.secondary">
+                            高性能对比计算中...
+                        </Typography>
+                    </Box>
+                </Fade>
             </Box>
         );
     };
@@ -203,20 +223,21 @@ function TextDiff() {
             actions={actions}
         >
             {/* 对比模式切换 */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3, gap: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3, gap: 2, flexWrap: 'wrap' }}>
                 <ToggleButtonGroup
                     value={diffMode}
                     exclusive
                     onChange={handleModeChange}
                     aria-label="对比模式"
+                    size="small"
                 >
                     <ToggleButton value="lines" aria-label="逐行">
                         <TextFieldsIcon sx={{ mr: 1 }} fontSize="small" />
-                        逐行
+                        逐行 (Fast)
                     </ToggleButton>
                     <ToggleButton value="words" aria-label="逐词">
                         <SpaceBarIcon sx={{ mr: 1 }} fontSize="small" />
-                        逐词
+                        逐词 (Smart)
                     </ToggleButton>
                     <ToggleButton value="chars" aria-label="逐字符">
                         <AbcIcon sx={{ mr: 1 }} fontSize="small" />
@@ -224,34 +245,33 @@ function TextDiff() {
                     </ToggleButton>
                 </ToggleButtonGroup>
 
-                <Box sx={{ display: 'flex', border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
-                    <ToggleButton
-                        value="sort"
-                        selected={sortLines}
-                        onChange={() => setSortLines(!sortLines)}
-                        color="primary"
-                        sx={{ border: 'none', borderRadius: '4px 0 0 4px' }}
-                        title="排序后对比（忽略行顺序）"
-                    >
-                        <SortByAlphaIcon sx={{ mr: 1 }} fontSize="small" />
-                        排序对比
-                    </ToggleButton>
-                    <Tooltip title="去除空格、空行并重排输入框文本">
-                        <Button
-                            onClick={handleSortInput}
-                            disabled={!leftInput && !rightInput}
-                            sx={{
-                                borderLeft: `1px solid ${theme.palette.divider}`,
-                                borderRadius: '0 4px 4px 0',
-                                color: 'text.secondary',
-                                px: 2,
-                                minWidth: 'auto'
-                            }}
-                        >
-                            重排输入
-                        </Button>
-                    </Tooltip>
-                </Box>
+                {diffIndices.length > 0 && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, border: `1px solid ${theme.palette.divider}`, borderRadius: 1, px: 2 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80 }}>
+                            差异点: {currentDiffIndex + 1} / {diffIndices.length}
+                        </Typography>
+                        <Tooltip title="上一个差异">
+                            <IconButton size="small" onClick={handlePrevDiff} disabled={diffIndices.length === 0}>
+                                <KeyboardArrowUpIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip title="下一个差异">
+                            <IconButton size="small" onClick={handleNextDiff} disabled={diffIndices.length === 0}>
+                                <KeyboardArrowDownIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                    </Box>
+                )}
+
+                {duration > 0 && (
+                    <Chip
+                        label={`计算耗时: ${duration}ms`}
+                        variant="outlined"
+                        size="small"
+                        color="secondary"
+                        sx={{ my: 'auto' }}
+                    />
+                )}
             </Box>
 
             {/* 三栏布局：左边输入 | 中间结果 | 右边输入 */}
@@ -362,10 +382,10 @@ function TextDiff() {
                         </Box>
                         <Box
                             sx={{
-                                p: 2,
+                                px: 0,
                                 flex: 1,
-                                overflow: 'auto',
-                                minHeight: 300,
+                                overflow: 'hidden',
+                                minHeight: 600,
                             }}
                         >
                             {!leftInput && !rightInput ? (

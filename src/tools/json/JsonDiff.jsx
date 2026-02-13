@@ -1,8 +1,12 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { Box, Grid, Paper, Typography, useTheme, Alert, Chip } from '@mui/material';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
+import { Box, Grid, Paper, Typography, useTheme, Alert, Chip, CircularProgress, Fade, Stack, IconButton, Tooltip, Button } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
-import { diffLines } from 'diff';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+import { useDiff } from '../../hooks/useDiff';
+import { List } from 'react-window';
 
 import ToolCard from '../../components/ToolCard';
 import CodeEditor from '../../components/CodeEditor';
@@ -21,94 +25,46 @@ function JsonDiff() {
     // 状态管理
     const [leftInput, setLeftInput] = useState('');
     const [rightInput, setRightInput] = useState('');
+    const [currentDiffIndex, setCurrentDiffIndex] = useState(-1);
+    const listRef = useRef(null);
 
-    /**
-     * 实时计算 JSON 对比结果（使用 useMemo 优化性能）
-     */
-    const { diffResult, stats, error, leftValid, rightValid } = useMemo(() => {
-        // 如果两边都为空，不显示结果
-        if (!leftInput.trim() && !rightInput.trim()) {
-            return {
-                diffResult: null,
-                stats: { added: 0, removed: 0, unchanged: 0 },
-                error: null,
-                leftValid: true,
-                rightValid: true,
-            };
-        }
+    // 直接将原始输入传给 Hook，格式化逻辑已移至 Worker 内部
+    const { result: diffResult, diffIndices, loading, duration, stats } = useDiff(leftInput, rightInput, 'lines', { wrapJson: true });
 
-        // 尝试解析 JSON
-        let leftParsed, rightParsed;
-        let leftValid = true, rightValid = true;
-        let parseError = null;
-
-        // 解析左侧（如果有内容）
+    // 语法错误检测
+    const { leftValid, rightValid, error } = useMemo(() => {
+        let lv = true, rv = true, err = null;
         if (leftInput.trim()) {
-            try {
-                leftParsed = JSON.parse(leftInput);
-            } catch (e) {
-                leftValid = false;
-                parseError = `左侧 JSON 语法错误: ${e.message}`;
-            }
-        } else {
-            leftParsed = {};
+            try { JSON.parse(leftInput); } catch (e) { lv = false; err = `左侧 JSON 错误: ${e.message}`; }
         }
-
-        // 解析右侧（如果有内容）
         if (rightInput.trim()) {
-            try {
-                rightParsed = JSON.parse(rightInput);
-            } catch (e) {
-                rightValid = false;
-                if (parseError) {
-                    parseError = '左右两侧 JSON 都有语法错误';
-                } else {
-                    parseError = `右侧 JSON 语法错误: ${e.message}`;
-                }
-            }
-        } else {
-            rightParsed = {};
+            try { JSON.parse(rightInput); } catch (e) { rv = false; err = err ? '左右两侧 JSON 都有语法错误' : `右侧 JSON 错误: ${e.message}`; }
         }
-
-        // 如果解析失败，返回错误
-        if (!leftValid || !rightValid) {
-            return {
-                diffResult: null,
-                stats: { added: 0, removed: 0, unchanged: 0 },
-                error: parseError,
-                leftValid,
-                rightValid,
-            };
-        }
-
-        // 格式化 JSON 确保格式一致
-        const leftFormatted = JSON.stringify(leftParsed, null, 2);
-        const rightFormatted = JSON.stringify(rightParsed, null, 2);
-
-        // 执行 diff
-        const diff = diffLines(leftFormatted, rightFormatted);
-
-        // 统计变更
-        let added = 0, removed = 0, unchanged = 0;
-        diff.forEach(part => {
-            const lines = part.value.split('\n').filter(l => l.trim()).length;
-            if (part.added) {
-                added += lines;
-            } else if (part.removed) {
-                removed += lines;
-            } else {
-                unchanged += lines;
-            }
-        });
-
-        return {
-            diffResult: diff,
-            stats: { added, removed, unchanged },
-            error: null,
-            leftValid: true,
-            rightValid: true,
-        };
+        return { leftValid: lv, rightValid: rv, error: err };
     }, [leftInput, rightInput]);
+
+    const handleFormat = useCallback(() => {
+        if (leftInput.trim()) {
+            try { setLeftInput(JSON.stringify(JSON.parse(leftInput), null, 4)); } catch (e) { }
+        }
+        if (rightInput.trim()) {
+            try { setRightInput(JSON.stringify(JSON.parse(rightInput), null, 4)); } catch (e) { }
+        }
+    }, [leftInput, rightInput, setLeftInput, setRightInput]);
+
+    const handleNextDiff = useCallback(() => {
+        if (!diffIndices || diffIndices.length === 0) return;
+        const nextIdx = (currentDiffIndex + 1) % diffIndices.length;
+        setCurrentDiffIndex(nextIdx);
+        listRef.current?.scrollToItem(diffIndices[nextIdx], 'center');
+    }, [diffIndices, currentDiffIndex]);
+
+    const handlePrevDiff = useCallback(() => {
+        if (!diffIndices || diffIndices.length === 0) return;
+        const prevIdx = (currentDiffIndex - 1 + diffIndices.length) % diffIndices.length;
+        setCurrentDiffIndex(prevIdx);
+        listRef.current?.scrollToItem(diffIndices[prevIdx], 'center');
+    }, [diffIndices, currentDiffIndex]);
 
     /**
      * 清空所有内容
@@ -144,59 +100,88 @@ function JsonDiff() {
     /**
      * 渲染 Diff 结果
      */
+    // 提取 Row 组件外部以便 List 调用
+    // 注意：在 react-window v2.x 中，rowProps 的内容会被平铺到 props 中
+    const Row = useCallback(({ index, style, diffResult, diffIndices, currentDiffIndex, theme }) => {
+        const part = diffResult ? diffResult[index] : null;
+        if (!part) return null;
+
+        let backgroundColor = 'transparent';
+        let color = theme.palette.text.primary;
+        let prefix = '  ';
+
+        if (part.type === 'added') {
+            backgroundColor = theme.palette.mode === 'dark'
+                ? 'rgba(34, 197, 94, 0.2)'
+                : 'rgba(34, 197, 94, 0.15)';
+            color = theme.palette.mode === 'dark' ? '#86efac' : '#15803d';
+            prefix = '+ ';
+        } else if (part.type === 'removed') {
+            backgroundColor = theme.palette.mode === 'dark'
+                ? 'rgba(239, 68, 68, 0.2)'
+                : 'rgba(239, 68, 68, 0.15)';
+            color = theme.palette.mode === 'dark' ? '#fca5a5' : '#dc2626';
+            prefix = '- ';
+        }
+
+        const isCurrent = diffIndices && diffIndices[currentDiffIndex] === index;
+
+        return (
+            <Box
+                style={style}
+                sx={{
+                    backgroundColor,
+                    color,
+                    px: 1,
+                    display: 'flex',
+                    fontFamily: "'Fira Code', monospace",
+                    fontSize: '13px',
+                    lineHeight: '25px',
+                    whiteSpace: 'pre',
+                    borderLeft: isCurrent ? `4px solid ${theme.palette.primary.main}` : 'none',
+                    overflow: 'hidden',
+                }}
+            >
+                <Box component="span" sx={{ opacity: 0.5, mr: 1, userSelect: 'none', width: '20px' }}>{prefix}</Box>
+                <Box component="span">{part.content}</Box>
+            </Box>
+        );
+    }, []);
+
     const renderDiffResult = () => {
         if (!diffResult) return null;
 
         return (
-            <Box
-                sx={{
-                    fontFamily: "'Fira Code', monospace",
-                    fontSize: '13px',
-                    lineHeight: 1.6,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                }}
-            >
-                {diffResult.map((part, index) => {
-                    let backgroundColor = 'transparent';
-                    let color = theme.palette.text.primary;
-                    let prefix = '  ';
+            <Box sx={{ position: 'relative', height: 600 }}>
+                <List
+                    listRef={listRef}
+                    height={600}
+                    rowCount={diffResult ? diffResult.length : 0}
+                    rowHeight={25}
+                    rowComponent={Row}
+                    rowProps={{ diffResult, diffIndices, currentDiffIndex, theme }}
+                    width="100%"
+                />
 
-                    if (part.added) {
-                        backgroundColor = theme.palette.mode === 'dark'
-                            ? 'rgba(34, 197, 94, 0.2)'
-                            : 'rgba(34, 197, 94, 0.15)';
-                        color = theme.palette.mode === 'dark' ? '#86efac' : '#15803d';
-                        prefix = '+ ';
-                    } else if (part.removed) {
-                        backgroundColor = theme.palette.mode === 'dark'
-                            ? 'rgba(239, 68, 68, 0.2)'
-                            : 'rgba(239, 68, 68, 0.15)';
-                        color = theme.palette.mode === 'dark' ? '#fca5a5' : '#dc2626';
-                        prefix = '- ';
-                    }
-
-                    return (
-                        <Box
-                            key={index}
-                            component="span"
-                            sx={{
-                                display: 'block',
-                                backgroundColor,
-                                color,
-                                px: 1,
-                            }}
-                        >
-                            {part.value.split('\n').map((line, lineIndex) =>
-                                line.trim() ? (
-                                    <Box key={lineIndex}>
-                                        {prefix}{line}
-                                    </Box>
-                                ) : null
-                            )}
-                        </Box>
-                    );
-                })}
+                {/* 加载遮罩 */}
+                <Fade in={loading}>
+                    <Box
+                        sx={{
+                            position: 'absolute',
+                            top: 0, left: 0, right: 0, bottom: 0,
+                            backgroundColor: 'rgba(255,255,255,0.7)',
+                            backdropFilter: 'blur(2px)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 10,
+                        }}
+                    >
+                        <CircularProgress size={40} sx={{ mb: 2 }} />
+                        <Typography variant="body2" color="text.secondary">对比中...</Typography>
+                    </Box>
+                </Fade>
             </Box>
         );
     };
@@ -280,40 +265,62 @@ function JsonDiff() {
                                 gap: 1,
                             }}
                         >
-                            <Typography variant="body2" fontWeight={500} color="text.secondary">
-                                对比结果
-                            </Typography>
-                            {hasDiff && (
-                                <Box sx={{ display: 'flex', gap: 0.5 }}>
-                                    <Chip
-                                        label={`-${stats.removed}`}
-                                        size="small"
-                                        sx={{
-                                            height: 20,
-                                            fontSize: 11,
-                                            backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                                            color: theme.palette.mode === 'dark' ? '#fca5a5' : '#dc2626',
-                                        }}
-                                    />
-                                    <Chip
-                                        label={`+${stats.added}`}
-                                        size="small"
-                                        sx={{
-                                            height: 20,
-                                            fontSize: 11,
-                                            backgroundColor: 'rgba(34, 197, 94, 0.15)',
-                                            color: theme.palette.mode === 'dark' ? '#86efac' : '#15803d',
-                                        }}
-                                    />
-                                </Box>
-                            )}
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="body2" fontWeight={500} color="text.secondary">
+                                    对比结果
+                                </Typography>
+                                <Button
+                                    size="small"
+                                    startIcon={<AutoFixHighIcon />}
+                                    onClick={handleFormat}
+                                    sx={{ ml: 2, py: 0 }}
+                                >
+                                    格式化输入
+                                </Button>
+                            </Box>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                {diffIndices.length > 0 && (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 1, px: 1 }}>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {currentDiffIndex + 1}/{diffIndices.length}
+                                        </Typography>
+                                        <IconButton size="small" onClick={handlePrevDiff}><KeyboardArrowUpIcon fontSize="inherit" /></IconButton>
+                                        <IconButton size="small" onClick={handleNextDiff}><KeyboardArrowDownIcon fontSize="inherit" /></IconButton>
+                                    </Box>
+                                )}
+                                {duration > 0 && <Chip label={`${duration}ms`} size="small" variant="outlined" />}
+                                {hasDiff && (
+                                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                        <Chip
+                                            label={`-${stats.removed}`}
+                                            size="small"
+                                            sx={{
+                                                height: 20,
+                                                fontSize: 11,
+                                                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                                                color: theme.palette.mode === 'dark' ? '#fca5a5' : '#dc2626',
+                                            }}
+                                        />
+                                        <Chip
+                                            label={`+${stats.added}`}
+                                            size="small"
+                                            sx={{
+                                                height: 20,
+                                                fontSize: 11,
+                                                backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                                                color: theme.palette.mode === 'dark' ? '#86efac' : '#15803d',
+                                            }}
+                                        />
+                                    </Box>
+                                )}
+                            </Stack>
                         </Box>
                         <Box
                             sx={{
-                                p: 2,
+                                px: 0,
                                 flex: 1,
-                                overflow: 'auto',
-                                minHeight: 370,
+                                overflow: 'hidden',
+                                minHeight: 600,
                             }}
                         >
                             {/* 错误提示 */}
