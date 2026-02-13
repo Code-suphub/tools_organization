@@ -16,8 +16,8 @@ import FormatSizeIcon from '@mui/icons-material/FormatSize';
 
 import CleaningServicesIcon from '@mui/icons-material/CleaningServices';
 import CodeIcon from '@mui/icons-material/Code';
-import AnalyticsIcon from '@mui/icons-material/Analytics';
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip } from '@mui/material';
+import FindReplaceIcon from '@mui/icons-material/FindReplace';
 
 import ToolCard from '../../components/ToolCard';
 
@@ -32,6 +32,8 @@ import ToolCard from '../../components/ToolCard';
 function TextToolkit() {
     const theme = useTheme();
     const [input, setInput] = useState('');
+    const [findText, setFindText] = useState('');
+    const [replaceText, setReplaceText] = useState('');
 
     /**
      * 统计信息
@@ -62,6 +64,42 @@ function TextToolkit() {
     const toUpperCase = () => transform(s => s.toUpperCase());
     const toLowerCase = () => transform(s => s.toLowerCase());
     const toTitleCase = () => transform(s => s.replace(/\b\w/g, c => c.toUpperCase()));
+
+    /**
+     * 文本替换逻辑
+     */
+    const handleReplace = (find = findText, replace = replaceText) => {
+        if (!find && find !== ' ') return;
+        transform(s => s.split(find).join(replace));
+    };
+
+    /**
+     * 常用替换预设
+     */
+    const applyPreset = (type) => {
+        switch (type) {
+            case 'escape-quotes':
+                handleReplace('"', '\\"');
+                break;
+            case 'unescape-quotes':
+                handleReplace('\\"', '"');
+                break;
+            case 'space-to-comma':
+                handleReplace(' ', ',');
+                break;
+            case 'newline-to-comma':
+                transform(s => s.split(/\r\n|\r|\n/).join(','));
+                break;
+            case 'comma-to-newline':
+                handleReplace(',', '\n');
+                break;
+            case 'remove-spaces':
+                transform(s => s.replace(/\s+/g, ''));
+                break;
+            default:
+                break;
+        }
+    };
 
     const removeDuplicates = () => transform(s => {
         const lines = s.split(/\r\n|\r|\n/);
@@ -184,8 +222,31 @@ function TextToolkit() {
 
     return (
         <ToolCard
-            title="文本工具箱"
-            description="包含文本统计、大小写转换、去重、去空行等常用操作"
+            title={
+                <Stack direction="row" alignItems="center" spacing={2}>
+                    <Typography variant="h4" fontWeight={600}>文本工具箱</Typography>
+                    <Divider orientation="vertical" flexItem sx={{ height: 28, my: 'auto', borderWidth: 1 }} />
+                    <Stack direction="row" spacing={2}>
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary">字符</Typography>
+                            <Typography variant="body2" fontWeight={700} color="primary">{stats.chars}</Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary">行数</Typography>
+                            <Typography variant="body2" fontWeight={700} color="primary">{stats.lines}</Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary">单词</Typography>
+                            <Typography variant="body2" fontWeight={700} color="primary">{stats.words}</Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary">大小</Typography>
+                            <Typography variant="body2" fontWeight={700} color="primary">{stats.bytesUtf8}B</Typography>
+                        </Box>
+                    </Stack>
+                </Stack>
+            }
+            description="包含文本统计、大小写转换、替换、去重、清理等常用操作"
             actions={actions}
         >
             <Grid container spacing={3}>
@@ -248,58 +309,60 @@ function TextToolkit() {
                 {/* 右侧统计和工具区域 */}
                 <Grid item xs={12} md={4}>
                     <Stack spacing={3}>
-                        {/* 详细统计 */}
+                        {/* 文本替换 */}
                         <Paper
                             elevation={0}
                             sx={{
-                                overflow: 'hidden',
+                                p: 2,
                                 backgroundColor: theme.palette.background.paper,
                                 border: `1px solid ${theme.palette.divider}`,
                                 borderRadius: 2,
                             }}
                         >
-                            <Box sx={{ p: 1.5, borderBottom: `1px solid ${theme.palette.divider}`, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <AnalyticsIcon fontSize="small" color="primary" />
-                                <Typography variant="subtitle2" fontWeight={600}>
-                                    文本统计
+                            <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <FindReplaceIcon fontSize="small" /> 文本替换
+                            </Typography>
+                            <Stack spacing={2}>
+                                <Stack direction="row" spacing={1}>
+                                    <TextField
+                                        size="small"
+                                        label="查找"
+                                        value={findText}
+                                        onChange={(e) => setFindText(e.target.value)}
+                                        fullWidth
+                                    />
+                                    <TextField
+                                        size="small"
+                                        label="替换为"
+                                        value={replaceText}
+                                        onChange={(e) => setReplaceText(e.target.value)}
+                                        fullWidth
+                                    />
+                                </Stack>
+                                <Button
+                                    variant="contained"
+                                    size="small"
+                                    onClick={() => handleReplace()}
+                                    fullWidth
+                                    sx={{ borderRadius: 1.5 }}
+                                >
+                                    全部替换
+                                </Button>
+
+                                <Divider />
+
+                                <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                                    常用预设
                                 </Typography>
-                            </Box>
-                            <TableContainer>
-                                <Table size="small">
-                                    <TableBody>
-                                        <TableRow>
-                                            <TableCell sx={{ color: 'text.secondary', border: 0 }}>字符数</TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 600, border: 0 }}>{stats.chars}</TableCell>
-                                        </TableRow>
-                                        <TableRow>
-                                            <TableCell sx={{ color: 'text.secondary', border: 0 }}>行数</TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 600, border: 0 }}>{stats.lines}</TableCell>
-                                        </TableRow>
-                                        <TableRow>
-                                            <TableCell sx={{ color: 'text.secondary', border: 0, pb: 2 }}>单词数</TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 600, border: 0, pb: 2 }}>{stats.words}</TableCell>
-                                        </TableRow>
-                                        {/* 分割线 */}
-                                        <TableRow>
-                                            <TableCell colSpan={2} sx={{ p: 0, border: 0 }}>
-                                                <Divider />
-                                            </TableCell>
-                                        </TableRow>
-                                        <TableRow>
-                                            <TableCell sx={{ color: 'text.secondary', border: 0, pt: 2 }}>UTF-8</TableCell>
-                                            <TableCell align="right" sx={{ fontFamily: 'monospace', border: 0, pt: 2 }}>{stats.bytesUtf8} B</TableCell>
-                                        </TableRow>
-                                        <TableRow>
-                                            <TableCell sx={{ color: 'text.secondary', border: 0 }}>GBK (Est.)</TableCell>
-                                            <TableCell align="right" sx={{ fontFamily: 'monospace', border: 0 }}>{stats.bytesGbk} B</TableCell>
-                                        </TableRow>
-                                        <TableRow>
-                                            <TableCell sx={{ color: 'text.secondary', border: 0 }}>UTF-16</TableCell>
-                                            <TableCell align="right" sx={{ fontFamily: 'monospace', border: 0 }}>{stats.bytesUtf16} B</TableCell>
-                                        </TableRow>
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                    <Chip label='引号转义 ( " -> \" )' size="small" onClick={() => applyPreset('escape-quotes')} sx={{ borderRadius: 1 }} />
+                                    <Chip label='引号恢复 ( \" -> " )' size="small" onClick={() => applyPreset('unescape-quotes')} sx={{ borderRadius: 1 }} />
+                                    <Chip label="空格 -> 逗号" size="small" onClick={() => applyPreset('space-to-comma')} sx={{ borderRadius: 1 }} />
+                                    <Chip label="换行 -> 逗号" size="small" onClick={() => applyPreset('newline-to-comma')} sx={{ borderRadius: 1 }} />
+                                    <Chip label="逗号 -> 换行" size="small" onClick={() => applyPreset('comma-to-newline')} sx={{ borderRadius: 1 }} />
+                                    <Chip label="删除所有空格" size="small" onClick={() => applyPreset('remove-spaces')} sx={{ borderRadius: 1 }} />
+                                </Box>
+                            </Stack>
                         </Paper>
 
                         {/* 编码转换 */}
