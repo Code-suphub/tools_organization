@@ -194,10 +194,10 @@ function TimestampConverter() {
             const precision = detectPrecision(value);
             const ms = toMilliseconds(value, precision);
             const date = dayjs(ms);
-            setDatetime(date.tz(selectedTimezone).format('YYYY-MM-DDTHH:mm:ss'));
+            setDatetimeValue(date);
             updateFormats(value);
         } else {
-            setDatetime('');
+            setDatetimeValue(null);
             setFormats({});
             setAllFormats(null);
             setDetectedPrecision(null);
