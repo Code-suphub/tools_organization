@@ -1,9 +1,12 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Box, Grid, Paper, Typography, useTheme, Alert, Tabs, Tab } from '@mui/material';
+import { useSearchParams } from 'react-router-dom';
 import FormatAlignLeftIcon from '@mui/icons-material/FormatAlignLeft';
 import CompressIcon from '@mui/icons-material/Compress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { html as beautifyHtml, css as beautifyCss, js as beautifyJs } from 'js-beautify';
+import yaml from 'js-yaml';
+import { format as formatSql } from 'sql-formatter';
 
 import ToolCard from '../../components/ToolCard';
 import CodeEditor from '../../components/CodeEditor';
@@ -16,6 +19,9 @@ const formatTypes = [
     { id: 'css', label: 'CSS', language: 'css' },
     { id: 'javascript', label: 'JavaScript', language: 'javascript' },
     { id: 'xml', label: 'XML', language: 'xml' },
+    { id: 'json', label: 'JSON', language: 'json' },
+    { id: 'yaml', label: 'YAML', language: 'yaml' },
+    { id: 'sql', label: 'SQL', language: 'sql' },
 ];
 
 /**
@@ -26,12 +32,32 @@ const formatTypes = [
  * - CSS 格式化/压缩
  * - JavaScript 格式化/压缩
  * - XML 格式化/压缩
+ * - JSON 格式化/压缩
+ * - YAML 格式化
+ * - SQL 格式化/压缩
  */
 function MultiFormat() {
     const theme = useTheme();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     // 状态管理
-    const [activeTab, setActiveTab] = useState(0);
+    const [activeTab, setActiveTab] = useState(() => {
+        const type = searchParams.get('type');
+        const index = formatTypes.findIndex(t => t.id === type);
+        return index !== -1 ? index : 0;
+    });
+
+    // 监听 URL 参数变化，同步标签页
+    useEffect(() => {
+        const type = searchParams.get('type');
+        if (type) {
+            const index = formatTypes.findIndex(t => t.id === type);
+            if (index !== -1 && index !== activeTab) {
+                setActiveTab(index);
+            }
+        }
+    }, [searchParams]);
+
     const [input, setInput] = useState('');
     const [output, setOutput] = useState('');
     const [error, setError] = useState(null);
@@ -79,6 +105,34 @@ function MultiFormat() {
                         ...options,
                         space_in_empty_paren: false,
                         brace_style: 'collapse',
+                    });
+                    break;
+                case 'json':
+                    try {
+                        const jsonObj = JSON.parse(input);
+                        result = JSON.stringify(jsonObj, null, 2);
+                    } catch (e) {
+                        throw new Error('无效的 JSON 格式: ' + e.message);
+                    }
+                    break;
+                case 'yaml':
+                    try {
+                        const yamlObj = yaml.load(input);
+                        result = yaml.dump(yamlObj, {
+                            indent: 2,
+                            lineWidth: -1,
+                            noRefs: true,
+                        });
+                    } catch (e) {
+                        throw new Error('无效的 YAML 格式: ' + e.message);
+                    }
+                    break;
+                case 'sql':
+                    result = formatSql(input, {
+                        language: 'sql',
+                        keywordCase: 'upper',
+                        indentStyle: 'standard',
+                        logicalOperatorNewline: 'before',
                     });
                     break;
                 default:
@@ -129,6 +183,31 @@ function MultiFormat() {
                     result = result.replace(/\s*([{}();,:])\s*/g, '$1'); // 移除符号周围空格
                     result = result.trim();
                     break;
+                case 'json':
+                    try {
+                        const jsonObj = JSON.parse(input);
+                        result = JSON.stringify(jsonObj);
+                    } catch (e) {
+                        throw new Error('无效的 JSON 格式: ' + e.message);
+                    }
+                    break;
+                case 'yaml':
+                    try {
+                        const yamlObj = yaml.load(input);
+                        result = JSON.stringify(yamlObj); // YAML 压缩通常转为 JSON
+                    } catch (e) {
+                        throw new Error('无效的 YAML 格式: ' + e.message);
+                    }
+                    break;
+                case 'sql':
+                    result = result
+                        .replace(/\s+/g, ' ')
+                        .replace(/\s*\(\s*/g, '(')
+                        .replace(/\s*\)\s*/g, ')')
+                        .replace(/\s*,\s*/g, ', ')
+                        .replace(/\s*;\s*/g, '; ')
+                        .trim();
+                    break;
                 default:
                     result = result.replace(/\s+/g, ' ').trim();
             }
@@ -155,6 +234,7 @@ function MultiFormat() {
      */
     const handleTabChange = (_, newValue) => {
         setActiveTab(newValue);
+        setSearchParams({ type: formatTypes[newValue].id });
         setInput('');
         setOutput('');
         setError(null);
@@ -185,6 +265,9 @@ function MultiFormat() {
         css: '.container{display:flex;justify-content:center;align-items:center;height:100vh;}',
         javascript: 'function hello(name){const greeting="Hello, "+name+"!";console.log(greeting);return greeting;}',
         xml: '<?xml version="1.0"?><root><item id="1"><name>Test</name><value>123</value></item></root>',
+        json: '{"name": "DevTools", "version": "1.0.0", "active": true}',
+        yaml: 'name: DevTools\nversion: 1.0.0\nactive: true\nfeatures:\n  - format\n  - minify',
+        sql: 'SELECT id, name, email FROM users WHERE status = 1 ORDER BY id DESC;',
     };
 
     return (
