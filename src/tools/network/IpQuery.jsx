@@ -16,6 +16,10 @@ import {
     DialogContent,
     DialogActions,
     Link,
+    Menu,
+    MenuItem,
+    ListItemIcon,
+    ListItemText,
 } from '@mui/material';
 import PublicIcon from '@mui/icons-material/Public';
 import LanguageIcon from '@mui/icons-material/Language';
@@ -25,11 +29,35 @@ import SecurityIcon from '@mui/icons-material/Security';
 import ExploreIcon from '@mui/icons-material/Explore';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import TerminalIcon from '@mui/icons-material/Terminal';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 
 import ToolCard from '../../components/ToolCard';
+
+/**
+ * 终端验证命令配置
+ */
+const VERIFY_COMMANDS = {
+    ipv4: [
+        { label: 'Mac/Linux (curl)', cmd: 'curl -4 api.ipify.org' },
+        { label: 'Windows (PowerShell)', cmd: '(Invoke-WebRequest -uri "https://api.ipify.org").Content' },
+    ],
+    ipv6: [
+        { label: 'Mac/Linux (curl)', cmd: 'curl -6 api6.ipify.org' },
+        { label: 'Windows (PowerShell)', cmd: '(Invoke-WebRequest -uri "https://api6.ipify.org").Content' },
+    ],
+    localIp: [
+        { label: 'Mac (bash)', cmd: 'ipconfig getifaddr en0 || ifconfig | grep "inet " | grep -v 127.0.0.1' },
+        { label: 'Linux (bash)', cmd: 'hostname -I' },
+        { label: 'Windows (cmd)', cmd: 'ipconfig | findstr IPv4' },
+    ],
+    dns: [
+        { label: 'Mac/Linux (dig)', cmd: 'dig +short txt o-o.myaddr.l.google.com @ns1.google.com' },
+        { label: 'Universal (nslookup)', cmd: 'nslookup whoami.akamai.net' },
+    ]
+};
 
 /**
  * IP 查询工具 (增强版)
@@ -58,31 +86,49 @@ function IpQuery() {
     });
 
     /**
-     * 获取局域网 IP (WebRTC 技巧)
+     * 获取局域网 IP (WebRTC 技巧 - 增强版支持多网卡)
      */
     const fetchLocalIP = useCallback(async (isRetry = false) => {
         setLocalIpLoading(true);
+        const ips = new Set();
+
         const result = await new Promise((resolve) => {
             try {
-                // 使用 Google STUN 服务器增加探测成功率
                 const pc = new RTCPeerConnection({
                     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
                 });
                 pc.createDataChannel("");
                 pc.createOffer().then(pc.setLocalDescription.bind(pc));
+
                 pc.onicecandidate = (ice) => {
-                    if (!ice || !ice.candidate || !ice.candidate.candidate) return;
-                    // 网络掩码匹配 IPv4 或 IPv6 地址
-                    const myIP = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/.exec(ice.candidate.candidate)[1];
-                    pc.onicecandidate = null;
-                    pc.close();
-                    resolve(myIP);
+                    // 只要有 candidate 就尝试提取 IP
+                    if (ice && ice.candidate && ice.candidate.candidate) {
+                        const match = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/.exec(ice.candidate.candidate);
+                        if (match) {
+                            const foundIp = match[1];
+                            // 排除常见的公网 IP (如果是从 STUN 获取的) 或本地回环
+                            if (foundIp !== '127.0.0.1' && !foundIp.includes(':')) {
+                                ips.add(foundIp);
+                            }
+                        }
+                    }
+
+                    // 如果已经探测到结果，且 candidate 结束了 (null)，则返回
+                    if (!ice.candidate && ips.size > 0) {
+                        pc.close();
+                        resolve(Array.from(ips));
+                    }
                 };
-                // 超时处理
+
+                // 超时强制返回当前已收集到的列表
                 setTimeout(() => {
                     pc.close();
-                    resolve('BLOCK'); // 标记为被拦截
-                }, 3000);
+                    if (ips.size > 0) {
+                        resolve(Array.from(ips));
+                    } else {
+                        resolve('BLOCK');
+                    }
+                }, 2000);
             } catch (e) {
                 resolve('UNSUPPORTED');
             }
@@ -120,24 +166,46 @@ function IpQuery() {
         setLoading(true);
         setError(null);
 
-        // 异步并行请求公网数据
         const tasks = [
+            // 强制获取 IPv4
             fetch('https://api.ipify.org?format=json').then(r => r.json()).catch(() => ({ ip: null })),
-            fetch('https://api64.ipify.org?format=json').then(r => r.json()).catch(() => ({ ip: null })),
+            // 强制获取 IPv6 (api6 仅在有 v6 环境时返回，否则请求失败)
+            fetch('https://api6.ipify.org?format=json').then(r => r.json()).catch(() => ({ ip: null })),
+            // 获取详细地理位置 (ipapi 会根据当前最优先的连接返回 IP)
             fetch('https://ipapi.co/json/').then(r => r.json()).catch(() => null),
+            // 获取 DNS
             fetch('https://edns.ip-api.com/json').then(r => r.json()).catch(() => null),
         ];
 
         try {
             const [v4Res, v6Res, geoRes, dnsRes] = await Promise.all(tasks);
 
-            setData(prev => ({
-                ...prev,
-                ipv4: v4Res.ip,
-                ipv6: v6Res.ip !== v4Res.ip ? v6Res.ip : '未分配/暂存 IPv6',
-                geo: geoRes,
-                dns: dnsRes,
-            }));
+            // 校验是否为真实的 IPv6 地址 (包含冒号)
+            const isRealV6 = (ip) => ip && ip.includes(':');
+            // 校验是否为 IPv4 地址 (包含点)
+            const isV4 = (ip) => ip && ip.includes('.') && !ip.includes(':');
+
+            setData(prev => {
+                let finalV4 = v4Res.ip;
+                let finalV6 = isRealV6(v6Res.ip) ? v6Res.ip : null;
+
+                // 如果专用的 v4 接口失败了，尝试从 geoRes 或 api64 (此处 v6Res 其实是 api6) 获取
+                if (!finalV4) {
+                    if (isV4(geoRes?.ip)) finalV4 = geoRes.ip;
+                    else if (isV4(v6Res.ip)) finalV4 = v6Res.ip;
+                }
+
+                // 再次确认 v6 槽位不被 v4 填充
+                if (isV4(finalV6)) finalV6 = null;
+
+                return {
+                    ...prev,
+                    ipv4: finalV4 || '未探测到',
+                    ipv6: finalV6 || '未探测到 IPv6',
+                    geo: geoRes,
+                    dns: dnsRes,
+                };
+            });
         } catch (err) {
             setError('获取部分信息失败，请重试');
         } finally {
@@ -156,6 +224,24 @@ function IpQuery() {
     const copyToClipboard = (text) => {
         if (!text) return;
         navigator.clipboard.writeText(text);
+    };
+
+    /**
+     * 判断 IP 常用用途标签
+     */
+    const getIpLabel = (ip) => {
+        if (!ip) return '';
+        if (ip.startsWith('192.168.')) return '物理网卡 / Wi-Fi';
+        if (ip.startsWith('10.')) return '企业内网 / VPN';
+        if (ip.startsWith('172.')) {
+            const secondOctet = parseInt(ip.split('.')[1]);
+            if (secondOctet >= 16 && secondOctet <= 31) return 'Docker / 虚拟机';
+            return '企业内网';
+        }
+        if (ip.startsWith('198.18.') || ip.startsWith('198.19.')) return '代理工具 (TUN)';
+        if (ip.startsWith('169.254.')) return '未分配地址 (APIPA)';
+        if (ip === '127.0.0.1') return '本地回环';
+        return '虚拟网卡 / 其他';
     };
 
     /**
@@ -186,14 +272,59 @@ function IpQuery() {
             return <Typography variant="body2" color="text.disabled">浏览器不支持</Typography>;
         }
 
+        const ipList = Array.isArray(data.localIp) ? data.localIp : [data.localIp];
+
         return (
-            <Typography variant="body1" fontWeight={700} color="text.primary">
-                {data.localIp}
-            </Typography>
+            <Stack spacing={0.8}>
+                {ipList.map((ip, idx) => (
+                    <Box key={idx} sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Typography
+                            variant="body1"
+                            fontWeight={700}
+                            color="text.primary"
+                            sx={{
+                                fontSize: '0.85rem',
+                                lineHeight: 1.2
+                            }}
+                        >
+                            {ip}
+                        </Typography>
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                color: 'primary.main',
+                                opacity: 0.8,
+                                fontSize: '0.65rem',
+                                fontWeight: 500
+                            }}
+                        >
+                            {getIpLabel(ip)}
+                        </Typography>
+                    </Box>
+                ))}
+            </Stack>
         );
     };
 
-    const InfoItem = ({ icon: Icon, label, value, subValue, isLoading, copyable = true, customContent }) => (
+    const [anchorEl, setAnchorEl] = useState(null);
+    const [currentCmdKey, setCurrentCmdKey] = useState(null);
+
+    const handleCmdMenuOpen = (event, key) => {
+        setAnchorEl(event.currentTarget);
+        setCurrentCmdKey(key);
+    };
+
+    const handleCmdMenuClose = () => {
+        setAnchorEl(null);
+        setCurrentCmdKey(null);
+    };
+
+    const handleCommandClick = (cmd) => {
+        copyToClipboard(cmd);
+        handleCmdMenuClose();
+    };
+
+    const InfoItem = ({ icon: Icon, label, value, subValue, isLoading, copyable = true, customContent, cmdKey }) => (
         <Paper
             elevation={0}
             sx={{
@@ -239,16 +370,26 @@ function IpQuery() {
                 )}
             </Box>
 
-            {!isLoading && !customContent && copyable && value && (
-                <Tooltip title="复制">
-                    <IconButton
-                        size="small"
-                        onClick={() => copyToClipboard(value)}
-                        sx={{ position: 'absolute', top: 8, right: 8 }}
-                    >
-                        <ContentCopyIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
-                </Tooltip>
+            {!isLoading && (
+                <Box sx={{ position: 'absolute', top: 4, right: 4, display: 'flex' }}>
+                    {cmdKey && VERIFY_COMMANDS[cmdKey] && (
+                        <Tooltip title="验证命令">
+                            <IconButton size="small" onClick={(e) => handleCmdMenuOpen(e, cmdKey)}>
+                                <TerminalIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+                    {copyable && value && (
+                        <Tooltip title="复制结果">
+                            <IconButton
+                                size="small"
+                                onClick={() => copyToClipboard(Array.isArray(value) ? value.join('\n') : value)}
+                            >
+                                <ContentCopyIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+                </Box>
             )}
         </Paper>
     );
@@ -279,16 +420,30 @@ function IpQuery() {
                     </Typography>
                     <Grid container spacing={2}>
                         <Grid item xs={12} sm={6} md={3}>
-                            <InfoItem icon={PublicIcon} label="公网 IPv4" value={data.ipv4} isLoading={loading} />
+                            <InfoItem
+                                icon={PublicIcon}
+                                label="公网 IPv4"
+                                value={data.ipv4}
+                                isLoading={loading}
+                                cmdKey="ipv4"
+                            />
                         </Grid>
                         <Grid item xs={12} sm={6} md={3}>
-                            <InfoItem icon={LanguageIcon} label="公网 IPv6" value={data.ipv6} isLoading={loading} />
+                            <InfoItem
+                                icon={LanguageIcon}
+                                label="公网 IPv6"
+                                value={data.ipv6}
+                                isLoading={loading}
+                                cmdKey="ipv6"
+                            />
                         </Grid>
                         <Grid item xs={12} sm={6} md={3}>
                             <InfoItem
                                 icon={RouterIcon}
                                 label="局域网 IP"
+                                value={Array.isArray(data.localIp) ? data.localIp : (data.localIp === 'BLOCK' || data.localIp === 'UNSUPPORTED' ? null : data.localIp)}
                                 customContent={renderLocalIpContent()}
+                                cmdKey="localIp"
                             />
                         </Grid>
                         <Grid item xs={12} sm={6} md={3}>
@@ -298,10 +453,41 @@ function IpQuery() {
                                 value={data.dns?.dns?.ip}
                                 subValue={data.dns?.dns?.geo}
                                 isLoading={loading}
+                                cmdKey="dns"
                             />
                         </Grid>
                     </Grid>
                 </Grid>
+
+                {/* 验证命令菜单 */}
+                <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={handleCmdMenuClose}
+                    transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                    anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                >
+                    {currentCmdKey && VERIFY_COMMANDS[currentCmdKey]?.map((item, index) => (
+                        <MenuItem key={index} onClick={() => handleCommandClick(item.cmd)}>
+                            <ListItemIcon>
+                                <TerminalIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText
+                                primary={item.label}
+                                secondary={item.cmd}
+                                secondaryTypographyProps={{
+                                    sx: {
+                                        fontFamily: 'monospace',
+                                        fontSize: '0.7rem',
+                                        maxWidth: '300px',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis'
+                                    }
+                                }}
+                            />
+                        </MenuItem>
+                    ))}
+                </Menu>
 
                 {/* 网络详情与归属地 */}
                 <Grid item xs={12} md={8}>
