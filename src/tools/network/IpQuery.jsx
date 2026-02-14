@@ -110,11 +110,28 @@ function IpQuery() {
                 pc.onicecandidate = (ice) => {
                     // 只要有 candidate 就尝试提取 IP
                     if (ice && ice.candidate && ice.candidate.candidate) {
-                        const match = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/.exec(ice.candidate.candidate);
+                        const candidateStr = ice.candidate.candidate;
+                        const match = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/.exec(candidateStr);
+
                         if (match) {
                             const foundIp = match[1];
-                            // 排除常见的公网 IP (如果是从 STUN 获取的) 或本地回环
-                            if (foundIp !== '127.0.0.1' && !foundIp.includes(':')) {
+
+                            // 定义内网/非公网 IP 范围判定逻辑
+                            const isPrivateIp = (ip) => {
+                                if (ip === '127.0.0.1' || ip.includes(':')) return false; // 排除 IPv6 和回环
+
+                                const parts = ip.split('.').map(Number);
+                                return (
+                                    parts[0] === 10 || // 10.x.x.x
+                                    (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) || // 172.16.x.x - 172.31.x.x
+                                    (parts[0] === 192 && parts[1] === 168) || // 192.168.x.x
+                                    (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) || // 100.64.x.x CGNAT
+                                    (parts[0] === 198 && (parts[1] === 18 || parts[1] === 19)) // 198.18.x.x Fake-IP/Benchmark
+                                );
+                            };
+
+                            // 只添加内网 IP，排除 STUN 获取到的公网 IP (srflx/prflx)
+                            if (isPrivateIp(foundIp)) {
                                 ips.add(foundIp);
                             }
                         }
