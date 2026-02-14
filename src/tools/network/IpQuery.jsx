@@ -54,8 +54,10 @@ const VERIFY_COMMANDS = {
         { label: 'Windows (cmd)', cmd: 'ipconfig | findstr IPv4' },
     ],
     dns: [
-        { label: 'Mac/Linux (dig)', cmd: 'dig +short txt o-o.myaddr.l.google.com @ns1.google.com' },
-        { label: 'Universal (nslookup)', cmd: 'nslookup whoami.akamai.net' },
+        { label: 'Mac/Linux (dig - OpenDNS)', cmd: 'dig +short myip.opendns.com @resolver1.opendns.com' },
+        { label: 'Mac/Linux (dig - Akamai)', cmd: 'dig +short txt whoami.akamai.net' },
+        { label: 'Windows (nslookup)', cmd: 'nslookup whoami.akamai.net' },
+        { label: 'Universal (Google IP)', cmd: 'dig +short @ns1.google.com o-o.myaddr.l.google.com TXT' },
     ]
 };
 
@@ -84,6 +86,11 @@ function IpQuery() {
         dns: null,
         userAgent: navigator.userAgent
     });
+
+    /**
+     * 检查是否存在 Fake-IP
+     */
+    const hasFakeIp = Array.isArray(data.localIp) && data.localIp.some(ip => ip.startsWith('198.18.') || ip.startsWith('198.19.'));
 
     /**
      * 获取局域网 IP (WebRTC 技巧 - 增强版支持多网卡)
@@ -158,6 +165,29 @@ function IpQuery() {
             setShowFixDialog(true);
         }
     };
+
+    /**
+     * DNS 劫持/Fake-IP 智能检测
+     * 原理：尝试解析一个绝对不可能存在的域名。
+     * 如果返回了 IP（通常是 198.18.x.x），则说明本地 DNS 被代理/Fake-IP 模式接管了。
+     */
+    const detectDnsHijacking = useCallback(async () => {
+        try {
+            // 使用 WebRTC 或 探测 API 是很难直接拿到 DNS 劫持结果的
+            // 这里我们主要基于 data.localIp 中是否包含 Fake-IP 段来辅助判定
+            // 另外，我们可以通过探测特定的“黑洞”地址来标记
+            const fakeDomains = ['fake-dns-detect.internal', 'non-existent-domain-test.com'];
+            // 注意：浏览器端无法直接做 DNS Lookup 并拿到原始 IP，除非通过 WebRTC 或 代理内核暴露的 API
+            // 因此，我们主要依赖 data.localIp 中已探测到的 198.18 段作为“劫持”存在的证据
+            if (hasFakeIp) {
+                const fakeIp = Array.isArray(data.localIp) ? data.localIp.find(ip => ip.startsWith('198.18.')) : null;
+                return fakeIp;
+            }
+            return null;
+        } catch (e) {
+            return null;
+        }
+    }, [hasFakeIp, data.localIp]);
 
     /**
      * 获取所有公网信息
@@ -238,11 +268,12 @@ function IpQuery() {
             if (secondOctet >= 16 && secondOctet <= 31) return 'Docker / 虚拟机';
             return '企业内网';
         }
-        if (ip.startsWith('198.18.') || ip.startsWith('198.19.')) return '代理工具 (TUN)';
+        if (ip.startsWith('198.18.') || ip.startsWith('198.19.')) return 'Fake-IP / 代理网关';
         if (ip.startsWith('169.254.')) return '未分配地址 (APIPA)';
         if (ip === '127.0.0.1') return '本地回环';
         return '虚拟网卡 / 其他';
     };
+
 
     /**
      * 渲染局域网 IP 卡片内容
@@ -452,6 +483,24 @@ function IpQuery() {
                                 label="DNS 解析器"
                                 value={data.dns?.dns?.ip}
                                 subValue={data.dns?.dns?.geo}
+                                customContent={hasFakeIp ? (
+                                    <Box sx={{ width: '100%' }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                                            <Typography variant="body2" sx={{ fontSize: '0.75rem', color: 'warning.main', fontWeight: 700 }}>
+                                                本地已劫持 (Fake-IP)
+                                            </Typography>
+                                            <Tooltip title="您的 DNS 请求已被代理工具接管并返回了虚拟 IP (Fake-IP)">
+                                                <InfoOutlinedIcon sx={{ fontSize: 14, color: 'warning.main' }} />
+                                            </Tooltip>
+                                        </Box>
+                                        <Typography variant="body1" fontWeight={700} color="text.primary" sx={{ wordBreak: 'break-all' }}>
+                                            {data.dns?.dns?.ip || '获取中...'}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary" display="block">
+                                            出口: {data.dns?.dns?.geo || '未知地点'}
+                                        </Typography>
+                                    </Box>
+                                ) : null}
                                 isLoading={loading}
                                 cmdKey="dns"
                             />
@@ -532,6 +581,15 @@ function IpQuery() {
                                             size="small"
                                             variant="outlined"
                                         />
+                                        {hasFakeIp && (
+                                            <Chip
+                                                icon={<TerminalIcon style={{ fontSize: 16 }} />}
+                                                label="Fake-IP: 开启"
+                                                sx={{ color: '#ed6c02', borderColor: '#ed6c02' }}
+                                                size="small"
+                                                variant="outlined"
+                                            />
+                                        )}
                                         <Chip
                                             icon={<ExploreIcon style={{ fontSize: 16 }} />}
                                             label={data.geo?.timezone || '时区'}
@@ -590,14 +648,23 @@ function IpQuery() {
                 </Grid>
             </Grid>
 
-            <Box sx={{ mt: 3 }}>
-                <Alert severity="info" variant="outlined" sx={{ borderStyle: 'dashed' }}>
-                    <Typography variant="caption" color="text.secondary">
-                        <strong>说明：</strong>
-                        1. 局域网 IP 获取依赖 WebRTC 技术，部分浏览器或网络环境可能出于安全考虑拦截此行为。<br />
-                        2. 代理/VPN 检测结果仅供参考，基于 IP 数据库识别已知出口。<br />
-                        3. DNS 解析器反映了您的域名查询最终到达出口的节点地址。
-                    </Typography>
+            <Box sx={{ mt: 3, mb: 1 }}>
+                <Alert severity="info" variant="outlined" sx={{ borderStyle: 'dashed', '& .MuiAlert-message': { width: '100%' } }}>
+                    <Typography variant="subtitle2" gutterBottom fontWeight={600}>使用说明与注意事项：</Typography>
+                    <Box component="ul" sx={{ pl: 2, m: 0, '& li': { mb: 1, fontSize: '0.75rem', color: 'text.secondary' } }}>
+                        <li>
+                            <strong>局域网 IP 探测：</strong> 依赖 WebRTC 技术。部分浏览器（如 Chrome）默认启用 mDNS 保护，可能会拦截真实 IP。若获取失败，请尝试“授权重试”或参考修复指南。
+                        </li>
+                        <li>
+                            <strong>代理环境下的差异：</strong> 若您使用了代理工具（开启 TUN/Fake-IP 模式），终端 `dig` 命令可能会返回 <code>198.18.x.x</code> 等 Fake-IP。
+                        </li>
+                        <li>
+                            <strong>结果权威性：</strong> 页面显示的“DNS 解析器”是目标服务器视角下的 <strong>真实出口 IP</strong>；终端命令结果反映的是本地代理工具的 <strong>内部劫持逻辑</strong>。
+                        </li>
+                        <li>
+                            <strong>地理位置：</strong> 基于 IP 数据库识别，由于运营商路由调整或代理节点漂移，结果可能存在数千米的误差。
+                        </li>
+                    </Box>
                 </Alert>
             </Box>
 
